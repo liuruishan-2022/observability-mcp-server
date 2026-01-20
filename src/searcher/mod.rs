@@ -2,7 +2,9 @@ use std::env::var;
 use thiserror::Error;
 
 pub mod prometheus;
+pub mod loki;
 use prometheus::PrometheusClient;
+use loki::LokiClient;
 
 /// searcher 模块的错误类型
 #[derive(Error, Debug)]
@@ -40,34 +42,44 @@ pub enum SearcherError {
 ///
 /// # 环境变量
 /// - `PROMETHEUS_ROOT`: Prometheus 服务器的根地址
+/// - `LOKI_ROOT`: Loki 服务器的根地址
 ///
 /// # 示例
 /// ```
 /// let searcher = build_searcher().unwrap();
 /// ```
 pub fn build_searcher() -> Result<Searcher, SearcherError> {
-    let root = var("PROMETHEUS_ROOT")
+    let prometheus_root = var("PROMETHEUS_ROOT")
         .map_err(|_| SearcherError::EnvVarNotSet("PROMETHEUS_ROOT".to_string()))?;
+    let loki_root = var("LOKI_ROOT")
+        .map_err(|_| SearcherError::EnvVarNotSet("LOKI_ROOT".to_string()))?;
 
     Ok(Searcher {
-        prometheus: PrometheusClient::new(root),
+        prometheus: PrometheusClient::new(prometheus_root),
+        loki: LokiClient::new(loki_root),
     })
 }
 
-/// Searcher 结构体，包含 Prometheus 客户端
+/// Searcher 结构体，包含 Prometheus 和 Loki 客户端
 pub struct Searcher {
     pub prometheus: PrometheusClient,
+    pub loki: LokiClient,
 }
 
 impl Searcher {
-    /// 使用指定的 Prometheus 地址创建 Searcher 实例
-    pub fn new(root: String) -> Self {
+    /// 使用指定的 Prometheus 和 Loki 地址创建 Searcher 实例
+    pub fn new(prometheus_root: String, loki_root: String) -> Self {
         Searcher {
-            prometheus: PrometheusClient::new(root),
+            prometheus: PrometheusClient::new(prometheus_root),
+            loki: LokiClient::new(loki_root),
         }
     }
 
     pub fn prometheus(&self) -> &PrometheusClient {
         &self.prometheus
+    }
+
+    pub fn loki(&self) -> &LokiClient {
+        &self.loki
     }
 }
