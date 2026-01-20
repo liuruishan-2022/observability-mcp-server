@@ -105,7 +105,7 @@ impl Tools {
     }
 
     #[tool(description = "获取Prometheus的构建信息")]
-    pub async fn build_info(&self) -> String {
+    pub async fn prom_build_info(&self) -> String {
         info!("获取Prometheus的构建信息!");
         match self.searcher.prometheus.build_info().await {
             Ok(info) => {
@@ -116,7 +116,7 @@ impl Tools {
     }
 
     #[tool(description = "获取AlertManager列表")]
-    pub async fn alert_managers(&self) -> String {
+    pub async fn prom_alert_managers(&self) -> String {
         info!("获取AlertManager列表!");
         match self.searcher.prometheus.alert_managers().await {
             Ok(managers) => {
@@ -127,7 +127,7 @@ impl Tools {
     }
 
     #[tool(description = "清理TSDB中的墓碑记录(tombstones)，回收磁盘空间")]
-    pub async fn clean_tombstones(&self) -> String {
+    pub async fn prom_clean_tombstones(&self) -> String {
         info!("清理TSDB墓碑记录!");
         match self.searcher.prometheus.clean_tombstones().await {
             Ok(msg) => msg,
@@ -136,7 +136,7 @@ impl Tools {
     }
 
     #[tool(description = "删除匹配选择器的时序数据")]
-    pub async fn delete_series(&self, Parameters(params): Parameters<SeriesRequest>) -> String {
+    pub async fn prom_delete_series(&self, Parameters(params): Parameters<SeriesRequest>) -> String {
         info!("删除时序数据，匹配: {:?}", params.matches);
         match self.searcher.prometheus.delete_series(&params.matches).await {
             Ok(msg) => msg,
@@ -145,7 +145,7 @@ impl Tools {
     }
 
     #[tool(description = "获取Prometheus的当前配置")]
-    pub async fn config(&self) -> String {
+    pub async fn prom_config(&self) -> String {
         info!("获取Prometheus配置!");
         match self.searcher.prometheus.config().await {
             Ok(config) => {
@@ -156,7 +156,7 @@ impl Tools {
     }
 
     #[tool(description = "查询与给定PromQL查询匹配的exemplars")]
-    pub async fn query_exemplars(&self, Parameters(params): Parameters<QueryExemplarsRequest>) -> String {
+    pub async fn prom_query_exemplars(&self, Parameters(params): Parameters<QueryExemplarsRequest>) -> String {
         info!("查询exemplars: {}", params.query);
         match self.searcher.prometheus.query_exemplars(&params.query).await {
             Ok(exemplars) => {
@@ -167,7 +167,7 @@ impl Tools {
     }
 
     #[tool(description = "获取Prometheus的命令行启动标志")]
-    pub async fn flags(&self) -> String {
+    pub async fn prom_flags(&self) -> String {
         info!("获取Prometheus命令行标志!");
         match self.searcher.prometheus.flags().await {
             Ok(flags) => {
@@ -178,7 +178,7 @@ impl Tools {
     }
 
     #[tool(description = "获取Prometheus中的所有标签名")]
-    pub async fn labels(&self) -> String {
+    pub async fn prom_labels(&self) -> String {
         info!("获取Prometheus标签列表!");
         match self.searcher.prometheus.labels().await {
             Ok(labels) => {
@@ -189,7 +189,7 @@ impl Tools {
     }
 
     #[tool(description = "获取指定标签名的所有可能值")]
-    pub async fn label_values(&self, Parameters(params): Parameters<LabelValuesRequest>) -> String {
+    pub async fn prom_label_values(&self, Parameters(params): Parameters<LabelValuesRequest>) -> String {
         info!("获取标签 {} 的值列表", params.label_name);
         match self.searcher.prometheus.label_values(&params.label_name).await {
             Ok(values) => {
@@ -200,7 +200,7 @@ impl Tools {
     }
 
     #[tool(description = "获取当前活动的告警列表")]
-    pub async fn alerts(&self) -> String {
+    pub async fn prom_alerts(&self) -> String {
         info!("获取告警列表!");
         match self.searcher.prometheus.alerts().await {
             Ok(alerts) => {
@@ -211,7 +211,7 @@ impl Tools {
     }
 
     #[tool(description = "获取Prometheus的所有规则(记录规则和告警规则)")]
-    pub async fn rules(&self) -> String {
+    pub async fn prom_rules(&self) -> String {
         info!("获取Prometheus规则列表!");
         match self.searcher.prometheus.rules().await {
             Ok(rules) => {
@@ -222,7 +222,7 @@ impl Tools {
     }
 
     #[tool(description = "获取Prometheus中所有指标的元数据")]
-    pub async fn metadata(&self) -> String {
+    pub async fn prom_metadata(&self) -> String {
         info!("获取Prometheus指标元数据!");
         match self.searcher.prometheus.metadata().await {
             Ok(metadata) => {
@@ -233,7 +233,7 @@ impl Tools {
     }
 
     #[tool(description = "执行PromQL即时查询")]
-    pub async fn query(&self, Parameters(params): Parameters<QueryRequest>) -> String {
+    pub async fn prom_query(&self, Parameters(params): Parameters<QueryRequest>) -> String {
         info!("执行PromQL查询: {}", params.query);
         match self.searcher.prometheus.query(&params.query, params.time.as_deref()).await {
             Ok(result) => {
@@ -244,7 +244,7 @@ impl Tools {
     }
 
     #[tool(description = "执行PromQL范围查询")]
-    pub async fn query_range(&self, Parameters(params): Parameters<QueryRangeRequest>) -> String {
+    pub async fn prom_query_range(&self, Parameters(params): Parameters<QueryRangeRequest>) -> String {
         info!("执行PromQL范围查询: {} ({} to {}, step: {})", params.query, params.start, params.end, params.step);
         match self.searcher.prometheus.query_range(&params.query, &params.start, &params.end, &params.step).await {
             Ok(result) => {
@@ -255,7 +255,7 @@ impl Tools {
     }
 
     #[tool(description = "获取Prometheus的运行时环境信息")]
-    pub async fn runtime_info(&self) -> String {
+    pub async fn prom_runtime_info(&self) -> String {
         info!("获取Prometheus运行时信息!");
         match self.searcher.prometheus.runtime_info().await {
             Ok(info) => {
@@ -266,7 +266,7 @@ impl Tools {
     }
 
     #[tool(description = "查询匹配选择器的时序")]
-    pub async fn series(&self, Parameters(params): Parameters<SeriesRequest>) -> String {
+    pub async fn prom_series(&self, Parameters(params): Parameters<SeriesRequest>) -> String {
         info!("查询时序，匹配: {:?}", params.matches);
         match self.searcher.prometheus.series(&params.matches).await {
             Ok(series) => {
