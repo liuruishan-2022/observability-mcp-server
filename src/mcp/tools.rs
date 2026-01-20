@@ -77,6 +77,36 @@ pub struct TargetsMetadataRequest {
     label: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct LokiQueryRequest {
+    #[schemars(description = "LogQL 查询语句")]
+    query: String,
+    #[schemars(description = "开始时间，RFC3339格式或纳秒时间戳")]
+    start: String,
+    #[schemars(description = "结束时间，RFC3339格式或纳秒时间戳")]
+    end: String,
+    #[schemars(description = "返回的最大条目数")]
+    limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct LokiLabelsRequest {
+    #[schemars(description = "开始时间，可选")]
+    start: Option<String>,
+    #[schemars(description = "结束时间，可选")]
+    end: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct LokiLabelValuesRequest {
+    #[schemars(description = "标签名称")]
+    label_name: String,
+    #[schemars(description = "开始时间，可选")]
+    start: Option<String>,
+    #[schemars(description = "结束时间，可选")]
+    end: Option<String>,
+}
+
 pub struct Tools {
     tool_router: ToolRouter<Tools>,
     searcher: Searcher,
@@ -119,9 +149,8 @@ impl Tools {
     pub async fn prom_alert_managers(&self) -> String {
         info!("获取AlertManager列表!");
         match self.searcher.prometheus.alert_managers().await {
-            Ok(managers) => {
-                serde_json::to_string(&managers).unwrap_or_else(|_| "Failed to serialize".to_string())
-            }
+            Ok(managers) => serde_json::to_string(&managers)
+                .unwrap_or_else(|_| "Failed to serialize".to_string()),
             Err(e) => format!("Error: {}", e),
         }
     }
@@ -136,9 +165,17 @@ impl Tools {
     }
 
     #[tool(description = "删除匹配选择器的时序数据")]
-    pub async fn prom_delete_series(&self, Parameters(params): Parameters<SeriesRequest>) -> String {
+    pub async fn prom_delete_series(
+        &self,
+        Parameters(params): Parameters<SeriesRequest>,
+    ) -> String {
         info!("删除时序数据，匹配: {:?}", params.matches);
-        match self.searcher.prometheus.delete_series(&params.matches).await {
+        match self
+            .searcher
+            .prometheus
+            .delete_series(&params.matches)
+            .await
+        {
             Ok(msg) => msg,
             Err(e) => format!("Error: {}", e),
         }
@@ -156,12 +193,19 @@ impl Tools {
     }
 
     #[tool(description = "查询与给定PromQL查询匹配的exemplars")]
-    pub async fn prom_query_exemplars(&self, Parameters(params): Parameters<QueryExemplarsRequest>) -> String {
+    pub async fn prom_query_exemplars(
+        &self,
+        Parameters(params): Parameters<QueryExemplarsRequest>,
+    ) -> String {
         info!("查询exemplars: {}", params.query);
-        match self.searcher.prometheus.query_exemplars(&params.query).await {
-            Ok(exemplars) => {
-                serde_json::to_string(&exemplars).unwrap_or_else(|_| "Failed to serialize".to_string())
-            }
+        match self
+            .searcher
+            .prometheus
+            .query_exemplars(&params.query)
+            .await
+        {
+            Ok(exemplars) => serde_json::to_string(&exemplars)
+                .unwrap_or_else(|_| "Failed to serialize".to_string()),
             Err(e) => format!("Error: {}", e),
         }
     }
@@ -189,9 +233,17 @@ impl Tools {
     }
 
     #[tool(description = "获取指定标签名的所有可能值")]
-    pub async fn prom_label_values(&self, Parameters(params): Parameters<LabelValuesRequest>) -> String {
+    pub async fn prom_label_values(
+        &self,
+        Parameters(params): Parameters<LabelValuesRequest>,
+    ) -> String {
         info!("获取标签 {} 的值列表", params.label_name);
-        match self.searcher.prometheus.label_values(&params.label_name).await {
+        match self
+            .searcher
+            .prometheus
+            .label_values(&params.label_name)
+            .await
+        {
             Ok(values) => {
                 serde_json::to_string(&values).unwrap_or_else(|_| "Failed to serialize".to_string())
             }
@@ -225,9 +277,8 @@ impl Tools {
     pub async fn prom_metadata(&self) -> String {
         info!("获取Prometheus指标元数据!");
         match self.searcher.prometheus.metadata().await {
-            Ok(metadata) => {
-                serde_json::to_string(&metadata).unwrap_or_else(|_| "Failed to serialize".to_string())
-            }
+            Ok(metadata) => serde_json::to_string(&metadata)
+                .unwrap_or_else(|_| "Failed to serialize".to_string()),
             Err(e) => format!("Error: {}", e),
         }
     }
@@ -235,7 +286,12 @@ impl Tools {
     #[tool(description = "执行PromQL即时查询")]
     pub async fn prom_query(&self, Parameters(params): Parameters<QueryRequest>) -> String {
         info!("执行PromQL查询: {}", params.query);
-        match self.searcher.prometheus.query(&params.query, params.time.as_deref()).await {
+        match self
+            .searcher
+            .prometheus
+            .query(&params.query, params.time.as_deref())
+            .await
+        {
             Ok(result) => {
                 serde_json::to_string(&result).unwrap_or_else(|_| "Failed to serialize".to_string())
             }
@@ -244,9 +300,20 @@ impl Tools {
     }
 
     #[tool(description = "执行PromQL范围查询")]
-    pub async fn prom_query_range(&self, Parameters(params): Parameters<QueryRangeRequest>) -> String {
-        info!("执行PromQL范围查询: {} ({} to {}, step: {})", params.query, params.start, params.end, params.step);
-        match self.searcher.prometheus.query_range(&params.query, &params.start, &params.end, &params.step).await {
+    pub async fn prom_query_range(
+        &self,
+        Parameters(params): Parameters<QueryRangeRequest>,
+    ) -> String {
+        info!(
+            "执行PromQL范围查询: {} ({} to {}, step: {})",
+            params.query, params.start, params.end, params.step
+        );
+        match self
+            .searcher
+            .prometheus
+            .query_range(&params.query, &params.start, &params.end, &params.step)
+            .await
+        {
             Ok(result) => {
                 serde_json::to_string(&result).unwrap_or_else(|_| "Failed to serialize".to_string())
             }
@@ -277,40 +344,45 @@ impl Tools {
     }
 
     #[tool(description = "创建TSDB快照")]
-    pub async fn snapshot(&self) -> String {
+    pub async fn prom_snapshot(&self) -> String {
         info!("创建TSDB快照!");
         match self.searcher.prometheus.snapshot().await {
-            Ok(snapshot) => {
-                serde_json::to_string(&snapshot).unwrap_or_else(|_| "Failed to serialize".to_string())
-            }
+            Ok(snapshot) => serde_json::to_string(&snapshot)
+                .unwrap_or_else(|_| "Failed to serialize".to_string()),
             Err(e) => format!("Error: {}", e),
         }
     }
 
     #[tool(description = "获取targets的指标元数据")]
-    pub async fn targets_metadata(&self, Parameters(params): Parameters<TargetsMetadataRequest>) -> String {
+    pub async fn prom_targets_metadata(
+        &self,
+        Parameters(params): Parameters<TargetsMetadataRequest>,
+    ) -> String {
         info!("获取targets元数据!");
-        match self.searcher.prometheus.targets_metadata(params.metric.as_deref(), params.label.as_deref()).await {
-            Ok(metadata) => {
-                serde_json::to_string(&metadata).unwrap_or_else(|_| "Failed to serialize".to_string())
-            }
+        match self
+            .searcher
+            .prometheus
+            .targets_metadata(params.metric.as_deref(), params.label.as_deref())
+            .await
+        {
+            Ok(metadata) => serde_json::to_string(&metadata)
+                .unwrap_or_else(|_| "Failed to serialize".to_string()),
             Err(e) => format!("Error: {}", e),
         }
     }
 
     #[tool(description = "获取所有targets的信息")]
-    pub async fn targets(&self) -> String {
+    pub async fn prom_targets(&self) -> String {
         info!("获取targets列表!");
         match self.searcher.prometheus.targets().await {
-            Ok(targets) => {
-                serde_json::to_string(&targets).unwrap_or_else(|_| "Failed to serialize".to_string())
-            }
+            Ok(targets) => serde_json::to_string(&targets)
+                .unwrap_or_else(|_| "Failed to serialize".to_string()),
             Err(e) => format!("Error: {}", e),
         }
     }
 
     #[tool(description = "获取TSDB的状态统计信息")]
-    pub async fn tsdb_status(&self) -> String {
+    pub async fn prom_tsdb_status(&self) -> String {
         info!("获取TSDB状态!");
         match self.searcher.prometheus.tsdb_status().await {
             Ok(status) => {
@@ -321,7 +393,7 @@ impl Tools {
     }
 
     #[tool(description = "获取WAL重放的状态信息")]
-    pub async fn wal_replay(&self) -> String {
+    pub async fn prom_wal_replay(&self) -> String {
         info!("获取WAL重放状态!");
         match self.searcher.prometheus.wal_replay().await {
             Ok(replay) => {
@@ -332,7 +404,7 @@ impl Tools {
     }
 
     #[tool(description = "健康检查，确认Prometheus服务是否健康")]
-    pub async fn healthy(&self) -> String {
+    pub async fn prom_healthy(&self) -> String {
         info!("执行健康检查!");
         match self.searcher.prometheus.healthy().await {
             Ok(msg) => msg,
@@ -341,7 +413,7 @@ impl Tools {
     }
 
     #[tool(description = "就绪检查，确认Prometheus服务是否就绪")]
-    pub async fn ready(&self) -> String {
+    pub async fn prom_ready(&self) -> String {
         info!("执行就绪检查!");
         match self.searcher.prometheus.ready().await {
             Ok(msg) => msg,
@@ -350,7 +422,7 @@ impl Tools {
     }
 
     #[tool(description = "重载Prometheus配置文件")]
-    pub async fn reload(&self) -> String {
+    pub async fn prom_reload(&self) -> String {
         info!("重载Prometheus配置!");
         match self.searcher.prometheus.reload().await {
             Ok(msg) => msg,
@@ -359,7 +431,7 @@ impl Tools {
     }
 
     #[tool(description = "优雅关闭Prometheus服务")]
-    pub async fn quit(&self) -> String {
+    pub async fn prom_quit(&self) -> String {
         info!("关闭Prometheus服务!");
         match self.searcher.prometheus.quit().await {
             Ok(msg) => msg,
@@ -377,11 +449,10 @@ impl Tools {
                 serde_json::json!({
                     "files": files,
                     "count": files.len()
-                }).to_string()
+                })
+                .to_string()
             }
-            None => {
-                "Error: Docs loader not initialized".to_string()
-            }
+            None => "Error: Docs loader not initialized".to_string(),
         }
     }
 
@@ -390,20 +461,73 @@ impl Tools {
         info!("读取文档文件: {}", params.file);
         let loader = self.docs_loader.read().await;
         match loader.as_ref() {
-            Some(docs) => {
-                match docs.read_file(&params.file) {
-                    Ok(content) => {
-                        serde_json::json!({
-                            "file": params.file,
-                            "content": content
-                        }).to_string()
-                    }
-                    Err(e) => format!("Error: {}", e),
-                }
+            Some(docs) => match docs.read_file(&params.file) {
+                Ok(content) => serde_json::json!({
+                    "file": params.file,
+                    "content": content
+                })
+                .to_string(),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Docs loader not initialized".to_string(),
+        }
+    }
+
+    #[tool(description = "执行 Loki LogQL 查询")]
+    pub async fn loki_query(&self, Parameters(params): Parameters<LokiQueryRequest>) -> String {
+        info!(
+            "执行 Loki 查询: {} ({} to {})",
+            params.query, params.start, params.end
+        );
+        match self
+            .searcher
+            .loki
+            .query(&params.query, &params.start, &params.end, params.limit)
+            .await
+        {
+            Ok(result) => {
+                serde_json::to_string(&result).unwrap_or_else(|_| "Failed to serialize".to_string())
             }
-            None => {
-                "Error: Docs loader not initialized".to_string()
+            Err(e) => format!("Error: {}", e),
+        }
+    }
+
+    #[tool(description = "获取 Loki 的所有标签名")]
+    pub async fn loki_labels(&self, Parameters(params): Parameters<LokiLabelsRequest>) -> String {
+        info!("获取 Loki 标签列表");
+        match self
+            .searcher
+            .loki
+            .labels(params.start.as_deref(), params.end.as_deref())
+            .await
+        {
+            Ok(labels) => {
+                serde_json::to_string(&labels).unwrap_or_else(|_| "Failed to serialize".to_string())
             }
+            Err(e) => format!("Error: {}", e),
+        }
+    }
+
+    #[tool(description = "获取 Loki 指定标签的所有可能值")]
+    pub async fn loki_label_values(
+        &self,
+        Parameters(params): Parameters<LokiLabelValuesRequest>,
+    ) -> String {
+        info!("获取 Loki 标签 {} 的值列表", params.label_name);
+        match self
+            .searcher
+            .loki
+            .label_values(
+                &params.label_name,
+                params.start.as_deref(),
+                params.end.as_deref(),
+            )
+            .await
+        {
+            Ok(values) => {
+                serde_json::to_string(&values).unwrap_or_else(|_| "Failed to serialize".to_string())
+            }
+            Err(e) => format!("Error: {}", e),
         }
     }
 
@@ -419,11 +543,10 @@ impl Tools {
                     "query": params.query,
                     "matching_files": results,
                     "count": results.len()
-                }).to_string()
+                })
+                .to_string()
             }
-            None => {
-                "Error: Docs loader not initialized".to_string()
-            }
+            None => "Error: Docs loader not initialized".to_string(),
         }
     }
 }
