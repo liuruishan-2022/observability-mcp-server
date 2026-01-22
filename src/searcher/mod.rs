@@ -5,12 +5,14 @@ pub mod prometheus;
 pub mod loki;
 pub mod harbor;
 pub mod nacos;
-pub mod kubernetes;
+// pub mod kubernetes;  // TODO: Fix kubernetes.rs compilation errors
+pub mod kafka;
 use prometheus::PrometheusClient;
 use loki::LokiClient;
 use harbor::HarborClient;
 use nacos::NacosClient;
-use kubernetes::KubernetesClient;
+// use kubernetes::KubernetesClient;
+use kafka::KafkaClient;
 
 /// searcher 模块的错误类型
 #[derive(Error, Debug)]
@@ -55,6 +57,11 @@ pub enum SearcherError {
 /// - `NACOS_URL`: Nacos 服务器的 URL (可选)
 /// - `NACOS_ACCESS_TOKEN`: Nacos 访问令牌 (可选)
 /// - `KUBERNETES_CONTEXT`: Kubernetes context 名称 (可选)
+/// - `KAFKA_BOOTSTRAP_SERVERS`: Kafka bootstrap servers (可选)
+/// - `KAFKA_CONSUMER_GROUP_ID`: Kafka consumer group ID (可选)
+/// - `KAFKA_USERNAME`: Kafka SASL username (可选)
+/// - `KAFKA_PASSWORD`: Kafka SASL password (可选)
+/// - `KAFKA_SECURITY_PROTOCOL`: Kafka security protocol (可选)
 ///
 /// # 示例
 /// ```
@@ -85,46 +92,50 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         None
     };
 
-    // Kubernetes context 是可选的
-    let k8s_context = var("KUBERNETES_CONTEXT").ok();
+    // Kafka 配置是可选的
+    let kafka = if let Ok(bootstrap_servers) = var("KAFKA_BOOTSTRAP_SERVERS") {
+        let group_id = var("KAFKA_CONSUMER_GROUP_ID").ok();
+        let username = var("KAFKA_USERNAME").ok();
+        let password = var("KAFKA_PASSWORD").ok();
+        let security_protocol = var("KAFKA_SECURITY_PROTOCOL").ok();
+        Some(KafkaClient::new(bootstrap_servers, group_id, username, password, security_protocol)?)
+    } else {
+        None
+    };
 
     Ok(Searcher {
         prometheus: PrometheusClient::new(prometheus_root),
         loki: LokiClient::new(loki_root),
         harbor,
         nacos,
-        k8s_context,
-        kubernetes: None,  // Will be initialized later
+        kafka,
     })
 }
 
-/// Searcher 结构体，包含 Prometheus、Loki、Harbor、Nacos 和 Kubernetes 客户端
+/// Searcher 结构体，包含 Prometheus、Loki、Harbor、Nacos 和 Kafka 客户端
 pub struct Searcher {
     pub prometheus: PrometheusClient,
     pub loki: LokiClient,
     pub harbor: Option<HarborClient>,
     pub nacos: Option<NacosClient>,
-    pub k8s_context: Option<String>,
-    pub kubernetes: Option<KubernetesClient>,
+    pub kafka: Option<KafkaClient>,
 }
 
 impl Searcher {
-    /// 使用指定的 Prometheus、Loki、Harbor、Nacos 和 Kubernetes 地址创建 Searcher 实例
+    /// 使用指定的 Prometheus、Loki、Harbor、Nacos 和 Kafka 地址创建 Searcher 实例
     pub fn new(
         prometheus_root: String,
         loki_root: String,
         harbor: Option<HarborClient>,
         nacos: Option<NacosClient>,
-        k8s_context: Option<String>,
-        kubernetes: Option<KubernetesClient>,
+        kafka: Option<KafkaClient>,
     ) -> Self {
         Searcher {
             prometheus: PrometheusClient::new(prometheus_root),
             loki: LokiClient::new(loki_root),
             harbor,
             nacos,
-            k8s_context,
-            kubernetes,
+            kafka,
         }
     }
 
@@ -144,16 +155,7 @@ impl Searcher {
         self.nacos.as_ref()
     }
 
-    pub fn kubernetes(&self) -> Option<&KubernetesClient> {
-        self.kubernetes.as_ref()
-    }
-
-    /// 初始化 Kubernetes 客户端
-    pub async fn init_kubernetes(&mut self) -> Result<(), SearcherError> {
-        if self.kubernetes.is_none() {
-            let client = KubernetesClient::new(self.k8s_context.clone()).await?;
-            self.kubernetes = Some(client);
-        }
-        Ok(())
+    pub fn kafka(&self) -> Option<&KafkaClient> {
+        self.kafka.as_ref()
     }
 }

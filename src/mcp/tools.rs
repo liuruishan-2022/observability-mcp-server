@@ -327,6 +327,53 @@ pub struct NacosListListenedConfigsRequest {
     pub aggregation: Option<bool>,
 }
 
+// ========== Kafka 相关数据结构 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KafkaCreateTopicRequest {
+    #[schemars(description = "主题名称")]
+    pub topic: String,
+    #[schemars(description = "分区数量，默认为 1")]
+    pub num_partitions: Option<i32>,
+    #[schemars(description = "副本因子，默认为 1")]
+    pub replication_factor: Option<i32>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KafkaListTopicsRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KafkaDeleteTopicRequest {
+    #[schemars(description = "要删除的主题名称")]
+    pub topic: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KafkaDescribeTopicRequest {
+    #[schemars(description = "要描述的主题名称")]
+    pub topic: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KafkaProduceMessageRequest {
+    #[schemars(description = "主题名称")]
+    pub topic: String,
+    #[schemars(description = "消息键 (可选，如不提供将自动生成 UUID)")]
+    pub key: Option<String>,
+    #[schemars(description = "消息内容")]
+    pub value: String,
+    #[schemars(description = "消息头 (可选)，格式为 {\"key1\": \"value1\", \"key2\": \"value2\"}")]
+    pub headers: Option<Vec<(String, String)>>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KafkaConsumeMessagesRequest {
+    #[schemars(description = "主题名称")]
+    pub topic: String,
+    #[schemars(description = "消费超时时间（秒），默认为 10")]
+    pub timeout_seconds: Option<i32>,
+}
+
 pub struct Tools {
     tool_router: ToolRouter<Tools>,
     searcher: Searcher,
@@ -1189,6 +1236,93 @@ impl Tools {
             None => "Error: Nacos client not configured".to_string(),
         }
     }
+
+    // ========== Kafka Tools ==========
+
+    #[tool(description = "创建 Kafka 主题")]
+    pub async fn kafka_create_topic(&self, Parameters(params): Parameters<KafkaCreateTopicRequest>) -> String {
+        info!("创建 Kafka 主题: {}", params.topic);
+        match self.searcher.kafka() {
+            Some(kafka) => {
+                let num_partitions = params.num_partitions.unwrap_or(1);
+                let replication_factor = params.replication_factor.unwrap_or(1);
+                match kafka.create_topic(&params.topic, num_partitions, replication_factor).await {
+                    Ok(result) => result,
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Kafka client not configured. Please set KAFKA_BOOTSTRAP_SERVERS environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "列出 Kafka 所有主题")]
+    pub async fn kafka_list_topics(&self, _params: Parameters<KafkaListTopicsRequest>) -> String {
+        info!("列出 Kafka 所有主题");
+        match self.searcher.kafka() {
+            Some(kafka) => match kafka.list_topics().await {
+                Ok(topics) => serde_json::to_string(&topics)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kafka client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "删除 Kafka 主题")]
+    pub async fn kafka_delete_topic(&self, Parameters(params): Parameters<KafkaDeleteTopicRequest>) -> String {
+        info!("删除 Kafka 主题: {}", params.topic);
+        match self.searcher.kafka() {
+            Some(kafka) => match kafka.delete_topic(&params.topic).await {
+                Ok(result) => result,
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kafka client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "描述 Kafka 主题详情")]
+    pub async fn kafka_describe_topic(&self, Parameters(params): Parameters<KafkaDescribeTopicRequest>) -> String {
+        info!("描述 Kafka 主题: {}", params.topic);
+        match self.searcher.kafka() {
+            Some(kafka) => match kafka.describe_topic(&params.topic).await {
+                Ok(metadata) => serde_json::to_string(&metadata)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kafka client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "生产消息到 Kafka 主题")]
+    pub async fn kafka_produce_message(&self, Parameters(params): Parameters<KafkaProduceMessageRequest>) -> String {
+        info!("生产消息到 Kafka 主题: {}", params.topic);
+        match self.searcher.kafka() {
+            Some(kafka) => match kafka.produce_message(
+                &params.topic,
+                params.key.clone(),
+                &params.value,
+                params.headers.clone(),
+            ).await {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kafka client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "从 Kafka 主题消费消息")]
+    pub async fn kafka_consume_messages(&self, Parameters(params): Parameters<KafkaConsumeMessagesRequest>) -> String {
+        info!("从 Kafka 主题消费消息: {}", params.topic);
+        match self.searcher.kafka() {
+            Some(kafka) => match kafka.consume_messages(&params.topic, params.timeout_seconds).await {
+                Ok(messages) => serde_json::to_string(&messages)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kafka client not configured".to_string(),
+        }
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -1203,11 +1337,11 @@ impl ServerHandler for Tools {
                 ..Default::default()
             },
             instructions: Some(
-                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, and Nacos service discovery and configuration management!".into(),
+                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, and Kafka messaging!".into(),
             ),
             server_info: Implementation {
                 name: "observability-mcp-server".into(),
-                version: "0.3.0".into(),
+                version: "0.4.0".into(),
                 ..Default::default()
             },
         }

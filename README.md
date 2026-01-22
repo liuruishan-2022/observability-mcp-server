@@ -8,6 +8,7 @@ A comprehensive Model Context Protocol (MCP) server for observability, infrastru
 - **Loki** - Log aggregation and analysis
 - **Harbor** - Container registry management
 - **Nacos** - Service discovery and configuration management
+- **Kafka** - Distributed messaging system
 
 ## Features
 
@@ -48,6 +49,13 @@ HARBOR_PASSWORD=Harbor12345
 # Optional - Nacos (for service discovery and configuration management, requires Nacos 3.0+)
 NACOS_URL=http://your-nacos:8848
 NACOS_ACCESS_TOKEN=your_access_token
+
+# Optional - Kafka (for messaging)
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+KAFKA_CONSUMER_GROUP_ID=mcp-kafka-consumer-group
+KAFKA_USERNAME=your_kafka_username
+KAFKA_PASSWORD=your_kafka_password
+KAFKA_SECURITY_PROTOCOL=plaintext
 ```
 
 ## MCP Tools
@@ -134,6 +142,18 @@ NACOS_ACCESS_TOKEN=your_access_token
 - `nacos_list_config_listeners` - List listeners subscribed to a configuration
 - `nacos_list_listened_configs` - List configurations subscribed by a client IP
 
+### Kafka Tools
+
+#### Topic Management
+- `kafka_create_topic` - Create a new Kafka topic with configurable partitions and replication factor
+- `kafka_list_topics` - List all available Kafka topics in the cluster
+- `kafka_delete_topic` - Delete an existing Kafka topic
+- `kafka_describe_topic` - Get detailed information about a specific topic including partition details
+
+#### Messaging
+- `kafka_produce_message` - Send messages to a Kafka topic with support for message keys and headers
+- `kafka_consume_messages` - Read messages from a Kafka topic with configurable timeout
+
 ### Documentation Tools
 - `docs_list` - List all available Prometheus documentation files
 - `docs_read` - Read specific documentation file
@@ -149,7 +169,8 @@ observability-mcp-server/
 │   │   ├── loki.rs        # Loki client
 │   │   ├── harbor.rs      # Harbor client
 │   │   ├── nacos.rs       # Nacos client
-│   │   └── mod.rs
+│   │   ├── kafka.rs       # Kafka client
+│   ��   └── mod.rs
 │   ├── mcp/
 │   │   └── tools.rs       # MCP tool definitions
 │   ├── docs/              # Documentation integration
@@ -226,6 +247,44 @@ const history = await mcp.callTool("nacos_list_config_history", {
 });
 ```
 
+### Kafka Messaging
+
+```javascript
+// List all topics
+const topics = await mcp.callTool("kafka_list_topics", {});
+
+// Create a new topic
+await mcp.callTool("kafka_create_topic", {
+  topic: "my-new-topic",
+  numPartitions: 3,
+  replicationFactor: 2
+});
+
+// Describe topic details
+const topicInfo = await mcp.callTool("kafka_describe_topic", {
+  topic: "my-topic"
+});
+
+// Produce a message
+const produceResult = await mcp.callTool("kafka_produce_message", {
+  topic: "my-topic",
+  key: "my-key",
+  value: "Hello, Kafka!",
+  headers: [["content-type", "text/plain"]]
+});
+
+// Consume messages
+const messages = await mcp.callTool("kafka_consume_messages", {
+  topic: "my-topic",
+  timeoutSeconds: 10
+});
+
+// Delete a topic
+await mcp.callTool("kafka_delete_topic", {
+  topic: "old-topic"
+});
+```
+
 ### Prometheus Querying
 
 ```javascript
@@ -249,12 +308,12 @@ const rangeResult = await mcp.callTool("prom_query_range", {
 - [x] Loki integration
 - [x] Harbor integration
 - [x] Nacos integration
+- [x] Kafka integration
 - [x] Documentation tools
 - [ ] MySQL integration
 - [ ] Doris integration
 - [ ] Kubernetes integration
 - [ ] RocketMQ integration
-- [ ] Kafka integration
 
 ## Contributing
 
