@@ -3,8 +3,10 @@ use thiserror::Error;
 
 pub mod prometheus;
 pub mod loki;
+pub mod harbor;
 use prometheus::PrometheusClient;
 use loki::LokiClient;
+use harbor::HarborClient;
 
 /// searcher 模块的错误类型
 #[derive(Error, Debug)]
@@ -43,6 +45,9 @@ pub enum SearcherError {
 /// # 环境变量
 /// - `PROMETHEUS_ROOT`: Prometheus 服务器的根地址
 /// - `LOKI_ROOT`: Loki 服务器的根地址
+/// - `HARBOR_URL`: Harbor 服务器的 URL (可选)
+/// - `HARBOR_USERNAME`: Harbor 用户名 (可选)
+/// - `HARBOR_PASSWORD`: Harbor 密码 (可选)
 ///
 /// # 示例
 /// ```
@@ -54,24 +59,38 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
     let loki_root = var("LOKI_ROOT")
         .map_err(|_| SearcherError::EnvVarNotSet("LOKI_ROOT".to_string()))?;
 
+    // Harbor 配置是可选的
+    let harbor = if let (Ok(url), Ok(username), Ok(password)) = (
+        var("HARBOR_URL"),
+        var("HARBOR_USERNAME"),
+        var("HARBOR_PASSWORD"),
+    ) {
+        Some(HarborClient::new(url, username, password))
+    } else {
+        None
+    };
+
     Ok(Searcher {
         prometheus: PrometheusClient::new(prometheus_root),
         loki: LokiClient::new(loki_root),
+        harbor,
     })
 }
 
-/// Searcher 结构体，包含 Prometheus 和 Loki 客户端
+/// Searcher 结构体，包含 Prometheus、Loki 和 Harbor 客户端
 pub struct Searcher {
     pub prometheus: PrometheusClient,
     pub loki: LokiClient,
+    pub harbor: Option<HarborClient>,
 }
 
 impl Searcher {
-    /// 使用指定的 Prometheus 和 Loki 地址创建 Searcher 实例
-    pub fn new(prometheus_root: String, loki_root: String) -> Self {
+    /// 使用指定的 Prometheus、Loki 和 Harbor 地址创建 Searcher 实例
+    pub fn new(prometheus_root: String, loki_root: String, harbor: Option<HarborClient>) -> Self {
         Searcher {
             prometheus: PrometheusClient::new(prometheus_root),
             loki: LokiClient::new(loki_root),
+            harbor,
         }
     }
 
@@ -81,5 +100,9 @@ impl Searcher {
 
     pub fn loki(&self) -> &LokiClient {
         &self.loki
+    }
+
+    pub fn harbor(&self) -> Option<&HarborClient> {
+        self.harbor.as_ref()
     }
 }

@@ -37,3 +37,6 @@ tokio-util = "0.7.18"
 
 # Environment variables
 dotenv = "0.15.0"
+
+# Base64 encoding
+base64 = "0.22.0"

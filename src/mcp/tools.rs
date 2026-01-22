@@ -107,6 +107,84 @@ pub struct LokiLabelValuesRequest {
     end: Option<String>,
 }
 
+// ========== Harbor 相关数据结构 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborGetProjectRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborCreateProjectRequest {
+    #[schemars(description = "项目名称")]
+    pub project_name: String,
+    #[schemars(description = "是否为公开项目")]
+    pub public: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborDeleteProjectRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborGetRepositoriesRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborDeleteRepositoryRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+    #[schemars(description = "仓库名称")]
+    pub repository_name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborGetArtifactsRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+    #[schemars(description = "仓库名称")]
+    pub repository_name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborDeleteArtifactRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+    #[schemars(description = "仓库名称")]
+    pub repository_name: String,
+    #[schemars(description = "artifact digest")]
+    pub digest: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborGetHelmChartsRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborGetHelmChartVersionsRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+    #[schemars(description = "Chart 名称")]
+    pub chart_name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct HarborDeleteHelmChartVersionRequest {
+    #[schemars(description = "项目 ID 或项目名称")]
+    pub project_id_or_name: String,
+    #[schemars(description = "Chart 名称")]
+    pub chart_name: String,
+    #[schemars(description = "Chart 版本")]
+    pub version: String,
+}
+
 pub struct Tools {
     tool_router: ToolRouter<Tools>,
     searcher: Searcher,
@@ -549,6 +627,183 @@ impl Tools {
             None => "Error: Docs loader not initialized".to_string(),
         }
     }
+
+    // ========== Harbor Tools ==========
+
+    #[tool(description = "获取 Harbor 所有项目列表")]
+    pub async fn harbor_get_projects(&self) -> String {
+        info!("获取 Harbor 项目列表");
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.get_projects().await {
+                Ok(projects) => serde_json::to_string(&projects)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured. Please set HARBOR_URL, HARBOR_USERNAME, and HARBOR_PASSWORD environment variables.".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Harbor 指定项目的信息")]
+    pub async fn harbor_get_project(&self, Parameters(params): Parameters<HarborGetProjectRequest>) -> String {
+        info!("获取 Harbor 项目: {}", params.project_id_or_name);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.get_project(&params.project_id_or_name).await {
+                Ok(project) => serde_json::to_string(&project)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "创建 Harbor 项目")]
+    pub async fn harbor_create_project(&self, Parameters(params): Parameters<HarborCreateProjectRequest>) -> String {
+        info!("创建 Harbor 项目: {}", params.project_name);
+        match self.searcher.harbor() {
+            Some(harbor) => {
+                use crate::searcher::harbor::CreateProjectRequest;
+                let request = CreateProjectRequest {
+                    project_name: params.project_name.clone(),
+                    public: params.public,
+                    metadata: None,
+                };
+                match harbor.create_project(&request).await {
+                    Ok(project) => serde_json::to_string(&project)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "删除 Harbor 项目")]
+    pub async fn harbor_delete_project(&self, Parameters(params): Parameters<HarborDeleteProjectRequest>) -> String {
+        info!("删除 Harbor 项目: {}", params.project_id_or_name);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.delete_project(&params.project_id_or_name).await {
+                Ok(()) => serde_json::json!({
+                    "status": "success",
+                    "message": format!("Project '{}' deleted successfully", params.project_id_or_name)
+                }).to_string(),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取项目的仓库列表")]
+    pub async fn harbor_get_repositories(&self, Parameters(params): Parameters<HarborGetRepositoriesRequest>) -> String {
+        info!("获取 Harbor 仓库列表: project={}", params.project_id_or_name);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.get_repositories(&params.project_id_or_name).await {
+                Ok(repositories) => serde_json::to_string(&repositories)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "删除仓库")]
+    pub async fn harbor_delete_repository(&self, Parameters(params): Parameters<HarborDeleteRepositoryRequest>) -> String {
+        info!("删除 Harbor 仓库: project={}, repo={}", params.project_id_or_name, params.repository_name);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.delete_repository(&params.project_id_or_name, &params.repository_name).await {
+                Ok(()) => serde_json::json!({
+                    "status": "success",
+                    "message": format!("Repository '{}/{}' deleted successfully", params.project_id_or_name, params.repository_name)
+                }).to_string(),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取仓库的 artifacts (镜像标签) 列表")]
+    pub async fn harbor_get_artifacts(&self, Parameters(params): Parameters<HarborGetArtifactsRequest>) -> String {
+        info!("获取 Harbor artifacts: project={}, repo={}", params.project_id_or_name, params.repository_name);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.get_artifacts(&params.project_id_or_name, &params.repository_name).await {
+                Ok(artifacts) => serde_json::to_string(&artifacts)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "删除 artifact (镜像标签)")]
+    pub async fn harbor_delete_artifact(&self, Parameters(params): Parameters<HarborDeleteArtifactRequest>) -> String {
+        info!("删除 Harbor artifact: project={}, repo={}, digest={}",
+            params.project_id_or_name, params.repository_name, params.digest);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.delete_artifact(
+                &params.project_id_or_name,
+                &params.repository_name,
+                &params.digest
+            ).await {
+                Ok(()) => serde_json::json!({
+                    "status": "success",
+                    "message": format!("Artifact '{}/{}@{}' deleted successfully",
+                        params.project_id_or_name, params.repository_name, params.digest)
+                }).to_string(),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取项目的 Helm Charts 列表")]
+    pub async fn harbor_get_helm_charts(&self, Parameters(params): Parameters<HarborGetHelmChartsRequest>) -> String {
+        info!("获取 Harbor Helm Charts: project={}", params.project_id_or_name);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.get_helm_charts(&params.project_id_or_name).await {
+                Ok(charts) => serde_json::to_string(&charts)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Helm Chart 的版本列表")]
+    pub async fn harbor_get_helm_chart_versions(&self, Parameters(params): Parameters<HarborGetHelmChartVersionsRequest>) -> String {
+        info!("获取 Harbor Helm Chart 版本: project={}, chart={}",
+            params.project_id_or_name, params.chart_name);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.get_helm_chart_versions(
+                &params.project_id_or_name,
+                &params.chart_name
+            ).await {
+                Ok(versions) => serde_json::to_string(&versions)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "删除 Helm Chart 版本")]
+    pub async fn harbor_delete_helm_chart_version(&self, Parameters(params): Parameters<HarborDeleteHelmChartVersionRequest>) -> String {
+        info!("删除 Harbor Helm Chart 版本: project={}, chart={}, version={}",
+            params.project_id_or_name, params.chart_name, params.version);
+        match self.searcher.harbor() {
+            Some(harbor) => match harbor.delete_helm_chart_version(
+                &params.project_id_or_name,
+                &params.chart_name,
+                &params.version
+            ).await {
+                Ok(()) => serde_json::json!({
+                    "status": "success",
+                    "message": format!("Helm Chart '{}/{}:{}' deleted successfully",
+                        params.project_id_or_name, params.chart_name, params.version)
+                }).to_string(),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Harbor client not configured".to_string(),
+        }
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -563,11 +818,11 @@ impl ServerHandler for Tools {
                 ..Default::default()
             },
             instructions: Some(
-                "Prometheus MCP Sserver providing metrics search for business!".into(),
+                "Observability MCP Server providing Prometheus, Loki metrics search and Harbor container registry management!".into(),
             ),
             server_info: Implementation {
-                name: "prometheus-mcp-server".into(),
-                version: "0.1.0".into(),
+                name: "observability-mcp-server".into(),
+                version: "0.2.0".into(),
                 ..Default::default()
             },
         }
