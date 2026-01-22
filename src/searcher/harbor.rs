@@ -21,6 +21,7 @@ impl HarborClient {
         let auth_header = format!("Basic {}", basic_auth_encode(&username, &password));
 
         let client = Client::builder()
+            .danger_accept_invalid_certs(true)
             .build()
             .expect("Failed to create HTTP client");
 
