@@ -7,6 +7,7 @@ A comprehensive Model Context Protocol (MCP) server for observability, infrastru
 - **Prometheus** - Metrics querying and alerting
 - **Loki** - Log aggregation and analysis
 - **Harbor** - Container registry management
+- **Nacos** - Service discovery and configuration management
 
 ## Features
 
@@ -43,6 +44,10 @@ LOKI_ROOT=http://your-loki:3100
 HARBOR_URL=https://harbor.example.com
 HARBOR_USERNAME=admin
 HARBOR_PASSWORD=Harbor12345
+
+# Optional - Nacos (for service discovery and configuration management, requires Nacos 3.0+)
+NACOS_URL=http://your-nacos:8848
+NACOS_ACCESS_TOKEN=your_access_token
 ```
 
 ## MCP Tools
@@ -110,6 +115,25 @@ HARBOR_PASSWORD=Harbor12345
 - `harbor_get_helm_chart_versions` - Get versions of a Helm chart
 - `harbor_delete_helm_chart_version` - Delete a specific Helm chart version
 
+### Nacos Tools
+
+#### Namespace Management
+- `nacos_list_namespaces` - List all namespaces in Nacos cluster
+
+#### Service Discovery
+- `nacos_list_services` - List services under a namespace with pagination
+- `nacos_get_service` - Get detailed information of a specific service
+- `nacos_list_instances` - List instances of a specific service
+- `nacos_list_service_subscribers` - List subscribers of a specific service
+
+#### Configuration Management
+- `nacos_list_configs` - List configurations under a namespace with pagination
+- `nacos_get_config` - Get details of a specific configuration
+- `nacos_list_config_history` - List configuration change history
+- `nacos_get_config_history` - Get specific configuration history record
+- `nacos_list_config_listeners` - List listeners subscribed to a configuration
+- `nacos_list_listened_configs` - List configurations subscribed by a client IP
+
 ### Documentation Tools
 - `docs_list` - List all available Prometheus documentation files
 - `docs_read` - Read specific documentation file
@@ -124,6 +148,7 @@ observability-mcp-server/
 │   │   ├── prometheus.rs  # Prometheus client
 │   │   ├── loki.rs        # Loki client
 │   │   ├── harbor.rs      # Harbor client
+│   │   ├── nacos.rs       # Nacos client
 │   │   └── mod.rs
 │   ├── mcp/
 │   │   └── tools.rs       # MCP tool definitions
@@ -154,6 +179,53 @@ const repos = await mcp.callTool("harbor_get_repositories", {
 });
 ```
 
+### Nacos Service Discovery
+
+```javascript
+// List all namespaces
+const namespaces = await mcp.callTool("nacos_list_namespaces", {});
+
+// List services
+const services = await mcp.callTool("nacos_list_services", {
+  pageNo: 1,
+  pageSize: 100,
+  namespaceId: "public"
+});
+
+// Get service instances
+const instances = await mcp.callTool("nacos_list_instances", {
+  serviceName: "my-service",
+  namespaceId: "public",
+  groupName: "DEFAULT_GROUP"
+});
+```
+
+### Nacos Configuration Management
+
+```javascript
+// List configurations
+const configs = await mcp.callTool("nacos_list_configs", {
+  pageNo: 1,
+  pageSize: 100,
+  namespaceId: "public"
+});
+
+// Get specific configuration
+const config = await mcp.callTool("nacos_get_config", {
+  dataId: "application.properties",
+  groupName: "DEFAULT_GROUP",
+  namespaceId: "public"
+});
+
+// List configuration history
+const history = await mcp.callTool("nacos_list_config_history", {
+  dataId: "application.properties",
+  groupName: "DEFAULT_GROUP",
+  pageNo: 1,
+  pageSize: 10
+});
+```
+
 ### Prometheus Querying
 
 ```javascript
@@ -176,8 +248,8 @@ const rangeResult = await mcp.callTool("prom_query_range", {
 - [x] Prometheus integration
 - [x] Loki integration
 - [x] Harbor integration
+- [x] Nacos integration
 - [x] Documentation tools
-- [ ] Nacos integration
 - [ ] MySQL integration
 - [ ] Doris integration
 - [ ] Kubernetes integration

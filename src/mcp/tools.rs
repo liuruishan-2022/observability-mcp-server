@@ -185,6 +185,148 @@ pub struct HarborDeleteHelmChartVersionRequest {
     pub version: String,
 }
 
+// ========== Nacos 相关数据结构 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosListNamespacesRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosListServicesRequest {
+    #[schemars(description = "当前页码，默认为 1")]
+    pub page_no: i32,
+    #[schemars(description = "每页服务数量，默认为 100")]
+    pub page_size: i32,
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "服务分组名称模式")]
+    pub group_name_param: Option<String>,
+    #[schemars(description = "服务名称模式")]
+    pub service_name_param: Option<String>,
+    #[schemars(description = "是否忽略空服务")]
+    pub ignore_empty_service: Option<bool>,
+    #[schemars(description = "是否包含实例信息")]
+    pub with_instances: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosGetServiceRequest {
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "服务分组名称，默认为 DEFAULT_GROUP")]
+    pub group_name: Option<String>,
+    #[schemars(description = "服务名称")]
+    pub service_name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosListInstancesRequest {
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "服务分组名称，默认为 DEFAULT_GROUP")]
+    pub group_name: Option<String>,
+    #[schemars(description = "服务名称")]
+    pub service_name: String,
+    #[schemars(description = "集群名称")]
+    pub cluster_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosListServiceSubscribersRequest {
+    #[schemars(description = "当前页码，默认为 1")]
+    pub page_no: i32,
+    #[schemars(description = "每页订阅者数量，默认为 100")]
+    pub page_size: i32,
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "服务分组名称，默认为 DEFAULT_GROUP")]
+    pub group_name: Option<String>,
+    #[schemars(description = "服务名称")]
+    pub service_name: String,
+    #[schemars(description = "是否聚合整个集群")]
+    pub aggregation: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosListConfigsRequest {
+    #[schemars(description = "当前页码，默认为 1")]
+    pub page_no: i32,
+    #[schemars(description = "每页配置数量，默认为 100")]
+    pub page_size: i32,
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "配置分组名称模式")]
+    pub group_name: Option<String>,
+    #[schemars(description = "配置 Data ID 模式")]
+    pub data_id: Option<String>,
+    #[schemars(description = "配置类型")]
+    #[serde(rename = "type")]
+    pub config_type: Option<String>,
+    #[schemars(description = "配置标签")]
+    pub config_tags: Option<String>,
+    #[schemars(description = "应用名称")]
+    pub app_name: Option<String>,
+    #[schemars(description = "搜索方式：blur(模糊) 或 accurate(精确)")]
+    pub search: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosGetConfigRequest {
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "配置分组名称")]
+    pub group_name: String,
+    #[schemars(description = "配置 Data ID")]
+    pub data_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosListConfigHistoryRequest {
+    #[schemars(description = "当前页码，默认为 1")]
+    pub page_no: i32,
+    #[schemars(description = "每页历史记录数量，默认为 100")]
+    pub page_size: i32,
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "配置分组名称")]
+    pub group_name: String,
+    #[schemars(description = "配置 Data ID")]
+    pub data_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosGetConfigHistoryRequest {
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "配置分组名称")]
+    pub group_name: String,
+    #[schemars(description = "配置 Data ID")]
+    pub data_id: String,
+    #[schemars(description = "历史记录 ID")]
+    pub nid: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosListConfigListenersRequest {
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "配置分组名称")]
+    pub group_name: String,
+    #[schemars(description = "配置 Data ID")]
+    pub data_id: String,
+    #[schemars(description = "是否聚合整个集群")]
+    pub aggregation: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct NacosListListenedConfigsRequest {
+    #[schemars(description = "命名空间 ID，默认为 public")]
+    pub namespace_id: Option<String>,
+    #[schemars(description = "客户端 IP")]
+    pub ip: String,
+    #[schemars(description = "是否聚合整个集群")]
+    pub aggregation: Option<bool>,
+}
+
 pub struct Tools {
     tool_router: ToolRouter<Tools>,
     searcher: Searcher,
@@ -804,6 +946,249 @@ impl Tools {
             None => "Error: Harbor client not configured".to_string(),
         }
     }
+
+    // ========== Nacos Tools ==========
+
+    #[tool(description = "获取 Nacos 所有命名空间列表")]
+    pub async fn nacos_list_namespaces(&self, _params: Parameters<NacosListNamespacesRequest>) -> String {
+        info!("获取 Nacos 命名空间列表");
+        match self.searcher.nacos() {
+            Some(nacos) => match nacos.list_namespaces().await {
+                Ok(namespaces) => serde_json::to_string(&namespaces)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Nacos client not configured. Please set NACOS_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 服务列表")]
+    pub async fn nacos_list_services(&self, Parameters(params): Parameters<NacosListServicesRequest>) -> String {
+        info!("获取 Nacos 服务列表: namespace={:?}", params.namespace_id);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::ListServicesParams;
+                let request = ListServicesParams {
+                    page_no: params.page_no,
+                    page_size: params.page_size,
+                    namespace_id: params.namespace_id.clone(),
+                    group_name_param: params.group_name_param.clone(),
+                    service_name_param: params.service_name_param.clone(),
+                    ignore_empty_service: params.ignore_empty_service,
+                    with_instances: params.with_instances,
+                };
+                match nacos.list_services(&request).await {
+                    Ok(services) => serde_json::to_string(&services)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 指定服务的详情")]
+    pub async fn nacos_get_service(&self, Parameters(params): Parameters<NacosGetServiceRequest>) -> String {
+        info!("获取 Nacos 服务详情: service={}", params.service_name);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::GetServiceParams;
+                let request = GetServiceParams {
+                    namespace_id: params.namespace_id.clone(),
+                    group_name: params.group_name.clone(),
+                    service_name: params.service_name.clone(),
+                };
+                match nacos.get_service(&request).await {
+                    Ok(service) => serde_json::to_string(&service)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 服务实例列表")]
+    pub async fn nacos_list_instances(&self, Parameters(params): Parameters<NacosListInstancesRequest>) -> String {
+        info!("获取 Nacos 服务实例: service={}", params.service_name);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::ListInstancesParams;
+                let request = ListInstancesParams {
+                    namespace_id: params.namespace_id.clone(),
+                    group_name: params.group_name.clone(),
+                    service_name: params.service_name.clone(),
+                    cluster_name: params.cluster_name.clone(),
+                };
+                match nacos.list_instances(&request).await {
+                    Ok(instances) => serde_json::to_string(&instances)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 服务订阅者列表")]
+    pub async fn nacos_list_service_subscribers(&self, Parameters(params): Parameters<NacosListServiceSubscribersRequest>) -> String {
+        info!("获取 Nacos 服务订阅者: service={}", params.service_name);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::ListServiceSubscribersParams;
+                let request = ListServiceSubscribersParams {
+                    page_no: params.page_no,
+                    page_size: params.page_size,
+                    namespace_id: params.namespace_id.clone(),
+                    group_name: params.group_name.clone(),
+                    service_name: params.service_name.clone(),
+                    aggregation: params.aggregation,
+                };
+                match nacos.list_service_subscribers(&request).await {
+                    Ok(subscribers) => serde_json::to_string(&subscribers)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 配置列表")]
+    pub async fn nacos_list_configs(&self, Parameters(params): Parameters<NacosListConfigsRequest>) -> String {
+        info!("获取 Nacos 配置列表");
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::ListConfigsParams;
+                let request = ListConfigsParams {
+                    page_no: params.page_no,
+                    page_size: params.page_size,
+                    namespace_id: params.namespace_id.clone(),
+                    group_name: params.group_name.clone(),
+                    data_id: params.data_id.clone(),
+                    config_type: params.config_type.clone(),
+                    config_tags: params.config_tags.clone(),
+                    app_name: params.app_name.clone(),
+                    search: params.search.clone(),
+                };
+                match nacos.list_configs(&request).await {
+                    Ok(configs) => serde_json::to_string(&configs)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 配置详情")]
+    pub async fn nacos_get_config(&self, Parameters(params): Parameters<NacosGetConfigRequest>) -> String {
+        info!("获取 Nacos 配置详情: dataId={}, group={}", params.data_id, params.group_name);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::GetConfigParams;
+                let request = GetConfigParams {
+                    namespace_id: params.namespace_id.clone(),
+                    group_name: params.group_name.clone(),
+                    data_id: params.data_id.clone(),
+                };
+                match nacos.get_config(&request).await {
+                    Ok(config) => serde_json::to_string(&config)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 配置历史列表")]
+    pub async fn nacos_list_config_history(&self, Parameters(params): Parameters<NacosListConfigHistoryRequest>) -> String {
+        info!("获取 Nacos 配置历史: dataId={}, group={}", params.data_id, params.group_name);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::ListConfigHistoryParams;
+                let request = ListConfigHistoryParams {
+                    page_no: params.page_no,
+                    page_size: params.page_size,
+                    namespace_id: params.namespace_id.clone(),
+                    group_name: params.group_name.clone(),
+                    data_id: params.data_id.clone(),
+                };
+                match nacos.list_config_history(&request).await {
+                    Ok(history) => serde_json::to_string(&history)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 配置历史详情")]
+    pub async fn nacos_get_config_history(&self, Parameters(params): Parameters<NacosGetConfigHistoryRequest>) -> String {
+        info!("获取 Nacos 配置历史详情: dataId={}, group={}, nid={:?}", params.data_id, params.group_name, params.nid);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::GetConfigHistoryParams;
+                let request = GetConfigHistoryParams {
+                    namespace_id: params.namespace_id.clone(),
+                    group_name: params.group_name.clone(),
+                    data_id: params.data_id.clone(),
+                    nid: params.nid,
+                };
+                match nacos.get_config_history(&request).await {
+                    Ok(detail) => serde_json::to_string(&detail)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Nacos 配置监听器列表")]
+    pub async fn nacos_list_config_listeners(&self, Parameters(params): Parameters<NacosListConfigListenersRequest>) -> String {
+        info!("获取 Nacos 配置监听器: dataId={}, group={}", params.data_id, params.group_name);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::ListConfigListenersParams;
+                let request = ListConfigListenersParams {
+                    namespace_id: params.namespace_id.clone(),
+                    group_name: params.group_name.clone(),
+                    data_id: params.data_id.clone(),
+                    aggregation: params.aggregation,
+                };
+                match nacos.list_config_listeners(&request).await {
+                    Ok(listeners) => serde_json::to_string(&listeners)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取客户端监听的 Nacos 配置列表")]
+    pub async fn nacos_list_listened_configs(&self, Parameters(params): Parameters<NacosListListenedConfigsRequest>) -> String {
+        info!("获取客户端监听的 Nacos 配置: ip={}", params.ip);
+        match self.searcher.nacos() {
+            Some(nacos) => {
+                use crate::searcher::nacos::ListListenedConfigsParams;
+                let request = ListListenedConfigsParams {
+                    namespace_id: params.namespace_id.clone(),
+                    ip: params.ip.clone(),
+                    aggregation: params.aggregation,
+                };
+                match nacos.list_listened_configs(&request).await {
+                    Ok(configs) => serde_json::to_string(&configs)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Nacos client not configured".to_string(),
+        }
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -818,11 +1203,11 @@ impl ServerHandler for Tools {
                 ..Default::default()
             },
             instructions: Some(
-                "Observability MCP Server providing Prometheus, Loki metrics search and Harbor container registry management!".into(),
+                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, and Nacos service discovery and configuration management!".into(),
             ),
             server_info: Implementation {
                 name: "observability-mcp-server".into(),
-                version: "0.2.0".into(),
+                version: "0.3.0".into(),
                 ..Default::default()
             },
         }

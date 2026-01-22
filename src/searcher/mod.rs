@@ -4,9 +4,13 @@ use thiserror::Error;
 pub mod prometheus;
 pub mod loki;
 pub mod harbor;
+pub mod nacos;
+pub mod kubernetes;
 use prometheus::PrometheusClient;
 use loki::LokiClient;
 use harbor::HarborClient;
+use nacos::NacosClient;
+use kubernetes::KubernetesClient;
 
 /// searcher 模块的错误类型
 #[derive(Error, Debug)]
@@ -48,6 +52,9 @@ pub enum SearcherError {
 /// - `HARBOR_URL`: Harbor 服务器的 URL (可选)
 /// - `HARBOR_USERNAME`: Harbor 用户名 (可选)
 /// - `HARBOR_PASSWORD`: Harbor 密码 (可选)
+/// - `NACOS_URL`: Nacos 服务器的 URL (可选)
+/// - `NACOS_ACCESS_TOKEN`: Nacos 访问令牌 (可选)
+/// - `KUBERNETES_CONTEXT`: Kubernetes context 名称 (可选)
 ///
 /// # 示例
 /// ```
@@ -70,27 +77,54 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         None
     };
 
+    // Nacos 配置是可选的
+    let nacos = if let Ok(url) = var("NACOS_URL") {
+        let token = var("NACOS_ACCESS_TOKEN").ok();
+        Some(NacosClient::new(url, token))
+    } else {
+        None
+    };
+
+    // Kubernetes context 是可选的
+    let k8s_context = var("KUBERNETES_CONTEXT").ok();
+
     Ok(Searcher {
         prometheus: PrometheusClient::new(prometheus_root),
         loki: LokiClient::new(loki_root),
         harbor,
+        nacos,
+        k8s_context,
+        kubernetes: None,  // Will be initialized later
     })
 }
 
-/// Searcher 结构体，包含 Prometheus、Loki 和 Harbor 客户端
+/// Searcher 结构体，包含 Prometheus、Loki、Harbor、Nacos 和 Kubernetes 客户端
 pub struct Searcher {
     pub prometheus: PrometheusClient,
     pub loki: LokiClient,
     pub harbor: Option<HarborClient>,
+    pub nacos: Option<NacosClient>,
+    pub k8s_context: Option<String>,
+    pub kubernetes: Option<KubernetesClient>,
 }
 
 impl Searcher {
-    /// 使用指定的 Prometheus、Loki 和 Harbor 地址创建 Searcher 实例
-    pub fn new(prometheus_root: String, loki_root: String, harbor: Option<HarborClient>) -> Self {
+    /// 使用指定的 Prometheus、Loki、Harbor、Nacos 和 Kubernetes 地址创建 Searcher 实例
+    pub fn new(
+        prometheus_root: String,
+        loki_root: String,
+        harbor: Option<HarborClient>,
+        nacos: Option<NacosClient>,
+        k8s_context: Option<String>,
+        kubernetes: Option<KubernetesClient>,
+    ) -> Self {
         Searcher {
             prometheus: PrometheusClient::new(prometheus_root),
             loki: LokiClient::new(loki_root),
             harbor,
+            nacos,
+            k8s_context,
+            kubernetes,
         }
     }
 
@@ -104,5 +138,22 @@ impl Searcher {
 
     pub fn harbor(&self) -> Option<&HarborClient> {
         self.harbor.as_ref()
+    }
+
+    pub fn nacos(&self) -> Option<&NacosClient> {
+        self.nacos.as_ref()
+    }
+
+    pub fn kubernetes(&self) -> Option<&KubernetesClient> {
+        self.kubernetes.as_ref()
+    }
+
+    /// 初始化 Kubernetes 客户端
+    pub async fn init_kubernetes(&mut self) -> Result<(), SearcherError> {
+        if self.kubernetes.is_none() {
+            let client = KubernetesClient::new(self.k8s_context.clone()).await?;
+            self.kubernetes = Some(client);
+        }
+        Ok(())
     }
 }
