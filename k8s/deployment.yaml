@@ -5,10 +5,10 @@ metadata:
   name: observability-mcp-server-cm
   namespace: monitoring
 data:
-  PROMETHEUS_ROOT=http://prometheus.monitoring:9090
-  LOKI_ROOT=http://loki.logs:3100
-  DORIS_URL=mysql://root:Sedp@2025@172.16.1.133:9030/sedp_test
-  DORIS_HTTP_URL=http://172.16.1.133:8030
+  PROMETHEUS_ROOT: 'http://prometheus.monitoring:9090'
+  LOKI_ROOT: 'http://loki.logs:3100'
+  DORIS_URL: 'mysql://root:Sedp@2025@172.16.1.133:9030/sedp_test'
+  DORIS_HTTP_URL: 'http://172.16.1.133:8030'
 
 ---
 apiVersion: apps/v1
