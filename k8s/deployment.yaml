@@ -6,11 +6,8 @@ metadata:
   namespace: monitoring
 data:
   .env: |
-    # Prometheus 配置
-    PROMETHEUS_ROOT=http://prometheus:9090
-
-    # Loki 配置
-    LOKI_ROOT=http://loki:3100
+    PROMETHEUS_ROOT=http://prometheus.monitoring:9090
+    LOKI_ROOT=http://loki.logs:3100
 
     # Harbor 配置 (可选 - 用于容器镜像仓库管理)
     # HARBOR_URL=https://harbor.example.com
@@ -29,8 +26,8 @@ data:
     # KAFKA_SECURITY_PROTOCOL=plaintext
 
     # Doris 配置 (可选 - 用于 Apache Doris 数据库操作)
-    # DORIS_URL=mysql://root:your_password@doris-fe:9030/information_schema
-    # DORIS_HTTP_URL=http://doris-fe:8030
+    DORIS_URL=mysql://root:Sedp@2025@172.16.1.133:9030/sedp_test
+    DORIS_HTTP_URL=http://172.16.1.133:8030
 
 ---
 apiVersion: apps/v1
@@ -64,6 +61,16 @@ spec:
                 configMapKeyRef:
                   name: observability-mcp-server-cm
                   key: LOKI_ROOT
+            - name: DORIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: observability-mcp-server-cm
+                  key: DORIS_URL
+            - name: DORIS_HTTP_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: observability-mcp-server-cm
+                  key: DORIS_HTTP_URL
           ports:
             - containerPort: 3013
               name: http
