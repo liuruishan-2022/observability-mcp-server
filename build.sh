@@ -22,9 +22,6 @@ fi
 FULL_TAG="${VERSION}-${COMMIT_HASH}"
 FULL_IMAGE="${REGISTRY}${IMAGE_NAME}:${FULL_TAG}"
 
-# Additional tag with just version
-VERSION_IMAGE="${REGISTRY}${IMAGE_NAME}:${VERSION}"
-
 echo "=================================="
 echo "Building observability-mcp-server"
 echo "=================================="
@@ -43,21 +40,20 @@ echo ""
 echo "Step 2: Building Docker image..."
 docker build \
     -t "${FULL_IMAGE}" \
-    -t "${VERSION_IMAGE}" \
     -f "${DOCKERFILE}" .
+
+# Step 3: Push Docker image
+echo ""
+echo "Step 3: Pushing Docker image..."
+docker push "${FULL_IMAGE}"
 
 echo ""
 echo "=================================="
 echo "Build Complete!"
 echo "=================================="
 echo ""
-echo "Image Tags:"
+echo "Image Tag:"
 echo "  ${FULL_IMAGE}"
-echo "  ${VERSION_IMAGE}"
-echo ""
-echo "To push to registry:"
-echo "  docker push ${FULL_IMAGE}"
-echo "  docker push ${VERSION_IMAGE}"
 echo ""
 echo "To run the container:"
 echo "  docker run -d -p 3013:3013 --env-file .env ${FULL_IMAGE}"

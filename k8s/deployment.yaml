@@ -47,7 +47,7 @@ spec:
         version: v0.1.0
     spec:
       containers:
-        - image: xwharbor.wxchina.com/cpaas/component/observability-mcp-server:v0.1.0
+        - image: xwharbor.wxchina.com/cpaas/component/observability-mcp-server:v0.1.0-8094a852b6
           name: observability-mcp-server
           envFrom:
             - configMapRef:
