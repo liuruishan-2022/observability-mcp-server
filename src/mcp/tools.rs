@@ -374,6 +374,48 @@ pub struct KafkaConsumeMessagesRequest {
     pub timeout_seconds: Option<i32>,
 }
 
+// ========== Doris 相关数据结构 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetDatabasesRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetTablesRequest {
+    #[schemars(description = "数据库名称")]
+    pub database: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetTableSchemaRequest {
+    #[schemars(description = "数据库名称")]
+    pub database: String,
+    #[schemars(description = "表名称")]
+    pub table: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetTableMetadataRequest {
+    #[schemars(description = "数据库名称")]
+    pub database: String,
+    #[schemars(description = "表名称")]
+    pub table: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetFeStatusRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetBeStatusRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetQueryStatsRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetRoutineLoadsRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetLoadJobsRequest {}
+
 pub struct Tools {
     tool_router: ToolRouter<Tools>,
     searcher: Searcher,
@@ -1313,7 +1355,7 @@ impl Tools {
 
     #[tool(description = "从 Kafka 主题消费消息")]
     pub async fn kafka_consume_messages(&self, Parameters(params): Parameters<KafkaConsumeMessagesRequest>) -> String {
-        info!("从 Kafka 主题消费消息: {}", params.topic);
+        info!("从 Kafka 主题消费���息: {}", params.topic);
         match self.searcher.kafka() {
             Some(kafka) => match kafka.consume_messages(&params.topic, params.timeout_seconds).await {
                 Ok(messages) => serde_json::to_string(&messages)
@@ -1321,6 +1363,125 @@ impl Tools {
                 Err(e) => format!("Error: {}", e),
             },
             None => "Error: Kafka client not configured".to_string(),
+        }
+    }
+
+    // ========== Doris Tools ==========
+
+    #[tool(description = "获取 Doris 所有数据库列表")]
+    pub async fn doris_get_databases(&self, _params: Parameters<DorisGetDatabasesRequest>) -> String {
+        info!("获取 Doris 数据库列表");
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_databases().await {
+                Ok(dbs) => serde_json::to_string(&dbs)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured. Please set DORIS_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "获取指定数据库的表列表")]
+    pub async fn doris_get_tables(&self, Parameters(params): Parameters<DorisGetTablesRequest>) -> String {
+        info!("获取 Doris 表列表: database={}", params.database);
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_tables(&params.database).await {
+                Ok(tables) => serde_json::to_string(&tables)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取表结构详情")]
+    pub async fn doris_get_table_schema(&self, Parameters(params): Parameters<DorisGetTableSchemaRequest>) -> String {
+        info!("获取 Doris 表结构: {}.{}", params.database, params.table);
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_table_schema(&params.database, &params.table).await {
+                Ok(schema) => serde_json::to_string(&schema)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取表元数据（大小、行数等）")]
+    pub async fn doris_get_table_metadata(&self, Parameters(params): Parameters<DorisGetTableMetadataRequest>) -> String {
+        info!("获取 Doris 表元数据: {}.{}", params.database, params.table);
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_table_metadata(&params.database, &params.table).await {
+                Ok(metadata) => serde_json::to_string(&metadata)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris FE (Frontend) 节点状态")]
+    pub async fn doris_get_fe_status(&self, _params: Parameters<DorisGetFeStatusRequest>) -> String {
+        info!("获取 Doris FE 节点状态");
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_fe_status().await {
+                Ok(status) => serde_json::to_string(&status)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured. Please set DORIS_HTTP_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris BE (Backend) 节点状态")]
+    pub async fn doris_get_be_status(&self, _params: Parameters<DorisGetBeStatusRequest>) -> String {
+        info!("获取 Doris BE 节点状态");
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_be_status().await {
+                Ok(status) => serde_json::to_string(&status)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured. Please set DORIS_HTTP_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris 查询统计信息")]
+    pub async fn doris_get_query_stats(&self, _params: Parameters<DorisGetQueryStatsRequest>) -> String {
+        info!("获取 Doris 查询统计");
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_query_stats().await {
+                Ok(stats) => serde_json::to_string(&stats)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris Routine Load 任务列表")]
+    pub async fn doris_get_routine_loads(&self, _params: Parameters<DorisGetRoutineLoadsRequest>) -> String {
+        info!("获取 Doris Routine Load 任务列表");
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_routine_loads().await {
+                Ok(jobs) => serde_json::to_string(&jobs)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris Load 任务列表")]
+    pub async fn doris_get_load_jobs(&self, _params: Parameters<DorisGetLoadJobsRequest>) -> String {
+        info!("获取 Doris Load 任务列表");
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_load_jobs().await {
+                Ok(jobs) => serde_json::to_string(&jobs)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
         }
     }
 }
@@ -1337,7 +1498,7 @@ impl ServerHandler for Tools {
                 ..Default::default()
             },
             instructions: Some(
-                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, and Kafka messaging!".into(),
+                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, and Doris database operations!".into(),
             ),
             server_info: Implementation {
                 name: "observability-mcp-server".into(),

@@ -7,12 +7,14 @@ pub mod harbor;
 pub mod nacos;
 // pub mod kubernetes;  // TODO: Fix kubernetes.rs compilation errors
 pub mod kafka;
+pub mod doris;
 use prometheus::PrometheusClient;
 use loki::LokiClient;
 use harbor::HarborClient;
 use nacos::NacosClient;
 // use kubernetes::KubernetesClient;
 use kafka::KafkaClient;
+use doris::DorisClient;
 
 /// searcher 模块的错误类型
 #[derive(Error, Debug)]
@@ -62,6 +64,8 @@ pub enum SearcherError {
 /// - `KAFKA_USERNAME`: Kafka SASL username (可选)
 /// - `KAFKA_PASSWORD`: Kafka SASL password (可选)
 /// - `KAFKA_SECURITY_PROTOCOL`: Kafka security protocol (可选)
+/// - `DORIS_URL`: Doris MySQL 连接 URL (可选, e.g., mysql://user:password@host:port/database)
+/// - `DORIS_HTTP_URL`: Doris HTTP API URL (可选, e.g., http://host:8030)
 ///
 /// # 示例
 /// ```
@@ -103,32 +107,43 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         None
     };
 
+    // Doris 配置是可选的
+    let doris = if let Ok(url) = var("DORIS_URL") {
+        let http_url = var("DORIS_HTTP_URL").ok();
+        Some(DorisClient::new(url, http_url))
+    } else {
+        None
+    };
+
     Ok(Searcher {
         prometheus: PrometheusClient::new(prometheus_root),
         loki: LokiClient::new(loki_root),
         harbor,
         nacos,
         kafka,
+        doris,
     })
 }
 
-/// Searcher 结构体，包含 Prometheus、Loki、Harbor、Nacos 和 Kafka 客户端
+/// Searcher 结构体，包含 Prometheus、Loki、Harbor、Nacos、Kafka 和 Doris 客户端
 pub struct Searcher {
     pub prometheus: PrometheusClient,
     pub loki: LokiClient,
     pub harbor: Option<HarborClient>,
     pub nacos: Option<NacosClient>,
     pub kafka: Option<KafkaClient>,
+    pub doris: Option<DorisClient>,
 }
 
 impl Searcher {
-    /// 使用指定的 Prometheus、Loki、Harbor、Nacos 和 Kafka 地址创建 Searcher 实例
+    /// 使用指定的 Prometheus、Loki、Harbor、Nacos、Kafka 和 Doris 地址创建 Searcher 实例
     pub fn new(
         prometheus_root: String,
         loki_root: String,
         harbor: Option<HarborClient>,
         nacos: Option<NacosClient>,
         kafka: Option<KafkaClient>,
+        doris: Option<DorisClient>,
     ) -> Self {
         Searcher {
             prometheus: PrometheusClient::new(prometheus_root),
@@ -136,6 +151,7 @@ impl Searcher {
             harbor,
             nacos,
             kafka,
+            doris,
         }
     }
 
@@ -157,5 +173,9 @@ impl Searcher {
 
     pub fn kafka(&self) -> Option<&KafkaClient> {
         self.kafka.as_ref()
+    }
+
+    pub fn doris(&self) -> Option<&DorisClient> {
+        self.doris.as_ref()
     }
 }
