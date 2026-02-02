@@ -13,7 +13,7 @@ if git diff --quiet && git diff --cached --quiet; then
     exit 0
 fi
 
-# Add all changes
+# Add all changes including untracked files
 git add -A
 
 # Get commit message

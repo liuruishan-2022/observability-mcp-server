@@ -1,0 +1,107 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observability-mcp-server-cm
+  namespace: monitoring
+data:
+  .env: |
+    # Prometheus 配置
+    PROMETHEUS_ROOT=http://prometheus:9090
+
+    # Loki 配置
+    LOKI_ROOT=http://loki:3100
+
+    # Harbor 配置 (可选 - 用于容器镜像仓库管理)
+    # HARBOR_URL=https://harbor.example.com
+    # HARBOR_USERNAME=admin
+    # HARBOR_PASSWORD=Harbor12345
+
+    # Nacos 配置 (可选 - 用于服务发现和配置管理)
+    # NACOS_URL=http://nacos:8848
+    # NACOS_ACCESS_TOKEN=your_access_token_here
+
+    # Kafka 配置 (可选 - 用于消息队列管理)
+    # KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    # KAFKA_CONSUMER_GROUP_ID=mcp-kafka-consumer-group
+    # KAFKA_USERNAME=your_kafka_username
+    # KAFKA_PASSWORD=your_kafka_password
+    # KAFKA_SECURITY_PROTOCOL=plaintext
+
+    # Doris 配置 (可选 - 用于 Apache Doris 数据库操作)
+    # DORIS_URL=mysql://root:your_password@doris-fe:9030/information_schema
+    # DORIS_HTTP_URL=http://doris-fe:8030
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: observability-mcp-server
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: observability-mcp-server
+      version: v0.1.0
+  template:
+    metadata:
+      labels:
+        app: observability-mcp-server
+        version: v0.1.0
+    spec:
+      containers:
+        - image: xwharbor.wxchina.com/cpaas/component/observability-mcp-server:v0.1.0
+          name: observability-mcp-server
+          env:
+            - name: PROMETHEUS_ROOT
+              valueFrom:
+                configMapKeyRef:
+                  name: observability-mcp-server-cm
+                  key: PROMETHEUS_ROOT
+            - name: LOKI_ROOT
+              valueFrom:
+                configMapKeyRef:
+                  name: observability-mcp-server-cm
+                  key: LOKI_ROOT
+          ports:
+            - containerPort: 3013
+              name: http
+              protocol: TCP
+          resources:
+            limits:
+              cpu: '2'
+              memory: 500Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: date-config
+            - mountPath: /opt/.env
+              name: observability-mcp-config
+              subPath: .env
+      volumes:
+        - configMap:
+            name: observability-mcp-server-cm
+          name: observability-mcp-config
+        - hostPath:
+            path: /etc/localtime
+          name: date-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: observability-mcp-server-svc
+  namespace: monitoring
+spec:
+  selector:
+    app: observability-mcp-server
+    version: v0.1.0
+  ports:
+    - name: http
+      port: 3013
+      targetPort: 3013
+      protocol: TCP
+  type: ClusterIP
