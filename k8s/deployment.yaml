@@ -25,7 +25,6 @@ data:
     # KAFKA_PASSWORD=your_kafka_password
     # KAFKA_SECURITY_PROTOCOL=plaintext
 
-    # Doris 配置 (可选 - 用于 Apache Doris 数据库操作)
     DORIS_URL=mysql://root:Sedp@2025@172.16.1.133:9030/sedp_test
     DORIS_HTTP_URL=http://172.16.1.133:8030
 
@@ -50,27 +49,9 @@ spec:
       containers:
         - image: xwharbor.wxchina.com/cpaas/component/observability-mcp-server:v0.1.0
           name: observability-mcp-server
-          env:
-            - name: PROMETHEUS_ROOT
-              valueFrom:
-                configMapKeyRef:
-                  name: observability-mcp-server-cm
-                  key: PROMETHEUS_ROOT
-            - name: LOKI_ROOT
-              valueFrom:
-                configMapKeyRef:
-                  name: observability-mcp-server-cm
-                  key: LOKI_ROOT
-            - name: DORIS_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: observability-mcp-server-cm
-                  key: DORIS_URL
-            - name: DORIS_HTTP_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: observability-mcp-server-cm
-                  key: DORIS_HTTP_URL
+          envFrom:
+            - configMapRef:
+                name: observability-mcp-server-cm
           ports:
             - containerPort: 3013
               name: http
@@ -85,13 +66,7 @@ spec:
           volumeMounts:
             - mountPath: /etc/localtime
               name: date-config
-            - mountPath: /opt/.env
-              name: observability-mcp-config
-              subPath: .env
       volumes:
-        - configMap:
-            name: observability-mcp-server-cm
-          name: observability-mcp-config
         - hostPath:
             path: /etc/localtime
           name: date-config
