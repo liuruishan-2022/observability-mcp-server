@@ -5,28 +5,10 @@ metadata:
   name: observability-mcp-server-cm
   namespace: monitoring
 data:
-  .env: |
-    PROMETHEUS_ROOT=http://prometheus.monitoring:9090
-    LOKI_ROOT=http://loki.logs:3100
-
-    # Harbor 配置 (可选 - 用于容器镜像仓库管理)
-    # HARBOR_URL=https://harbor.example.com
-    # HARBOR_USERNAME=admin
-    # HARBOR_PASSWORD=Harbor12345
-
-    # Nacos 配置 (可选 - 用于服务发现和配置管理)
-    # NACOS_URL=http://nacos:8848
-    # NACOS_ACCESS_TOKEN=your_access_token_here
-
-    # Kafka 配置 (可选 - 用于消息队列管理)
-    # KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    # KAFKA_CONSUMER_GROUP_ID=mcp-kafka-consumer-group
-    # KAFKA_USERNAME=your_kafka_username
-    # KAFKA_PASSWORD=your_kafka_password
-    # KAFKA_SECURITY_PROTOCOL=plaintext
-
-    DORIS_URL=mysql://root:Sedp@2025@172.16.1.133:9030/sedp_test
-    DORIS_HTTP_URL=http://172.16.1.133:8030
+  PROMETHEUS_ROOT=http://prometheus.monitoring:9090
+  LOKI_ROOT=http://loki.logs:3100
+  DORIS_URL=mysql://root:Sedp@2025@172.16.1.133:9030/sedp_test
+  DORIS_HTTP_URL=http://172.16.1.133:8030
 
 ---
 apiVersion: apps/v1
@@ -49,9 +31,27 @@ spec:
       containers:
         - image: xwharbor.wxchina.com/cpaas/component/observability-mcp-server:v0.1.0-8094a852b6
           name: observability-mcp-server
-          envFrom:
-            - configMapRef:
-                name: observability-mcp-server-cm
+          env:
+            - name: PROMETHEUS_ROOT
+              valueFrom:
+                configMapKeyRef:
+                  name: observability-mcp-server-cm
+                  key: PROMETHEUS_ROOT
+            - name: LOKI_ROOT
+              valueFrom:
+                configMapKeyRef:
+                  name: observability-mcp-server-cm
+                  key: LOKI_ROOT
+            - name: DORIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: observability-mcp-server-cm
+                  key: DORIS_URL
+            - name: DORIS_HTTP_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: observability-mcp-server-cm
+                  key: DORIS_HTTP_URL
           ports:
             - containerPort: 3013
               name: http
