@@ -4,7 +4,7 @@ use rdkafka::{
     config::ClientConfig,
     consumer::{Consumer, DefaultConsumerContext, StreamConsumer},
     message::{Headers, OwnedHeaders, Header as KafkaHeader},
-    producer::{DefaultProducerContext, FutureProducer, BaseRecord, FutureRecord},
+    producer::{FutureProducer, FutureRecord},
     Message,
 };
 use serde::{Deserialize, Serialize};
