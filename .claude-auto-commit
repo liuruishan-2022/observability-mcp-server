@@ -1,0 +1,25 @@
+#!/bin/bash
+# Auto-commit helper for Claude's changes
+# Usage: ./.claude-auto-commit "commit message without quotes"
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Check if there are changes
+if git diff --quiet && git diff --cached --quiet; then
+    echo "No changes to commit"
+    exit 0
+fi
+
+# Add all changes
+git add -A
+
+# Get commit message
+MSG="$1"
+
+# Commit with standard format
+git commit -m "$MSG"$'\n\n''Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>'
+
+echo "Changes committed successfully"
