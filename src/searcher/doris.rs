@@ -634,22 +634,26 @@ pub struct LoadJobResponse {
 mod tests {
     use super::*;
 
+    fn init() {
+        tracing_subscriber::fmt().init();
+    }
+
     #[tokio::test]
     async fn test_doris_routine_load() {
+        init();
         // Load environment variables from .env file
         dotenv::dotenv().ok();
 
         // Get configuration from environment variables
-        let host = std::env::var("DORIS_HOST")
-            .expect("DORIS_HOST environment variable must be set");
-        let port = std::env::var("DORIS_PORT")
-            .unwrap_or_else(|_| "9030".to_string());
+        let host =
+            std::env::var("DORIS_HOST").expect("DORIS_HOST environment variable must be set");
+        let port = std::env::var("DORIS_PORT").unwrap_or_else(|_| "9030".to_string());
         let username = std::env::var("DORIS_USERNAME")
             .expect("DORIS_USERNAME environment variable must be set");
         let password = std::env::var("DORIS_PASSWORD")
             .expect("DORIS_PASSWORD environment variable must be set");
-        let database = std::env::var("DORIS_DB")
-            .expect("DORIS_DB environment variable must be set");
+        let database =
+            std::env::var("DORIS_DB").expect("DORIS_DB environment variable must be set");
         let http_url = std::env::var("DORIS_HTTP_URL").ok();
 
         println!("Creating Doris client...");
@@ -682,8 +686,11 @@ mod tests {
                 }
 
                 // Verify the response
-                assert_eq!(response.total, response.jobs.len(),
-                    "Total count should match the actual number of jobs");
+                assert_eq!(
+                    response.total,
+                    response.jobs.len(),
+                    "Total count should match the actual number of jobs"
+                );
             }
             Err(e) => {
                 eprintln!("✗ Failed to execute SHOW ROUTINE LOAD: {}", e);
@@ -694,20 +701,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_doris_execute_sql() {
+        init();
         // Load environment variables from .env file
         dotenv::dotenv().ok();
 
         // Get configuration from environment variables
-        let host = std::env::var("DORIS_HOST")
-            .expect("DORIS_HOST environment variable must be set");
-        let port = std::env::var("DORIS_PORT")
-            .unwrap_or_else(|_| "9030".to_string());
+        let host =
+            std::env::var("DORIS_HOST").expect("DORIS_HOST environment variable must be set");
+        let port = std::env::var("DORIS_PORT").unwrap_or_else(|_| "9030".to_string());
         let username = std::env::var("DORIS_USERNAME")
             .expect("DORIS_USERNAME environment variable must be set");
         let password = std::env::var("DORIS_PASSWORD")
             .expect("DORIS_PASSWORD environment variable must be set");
-        let database = std::env::var("DORIS_DB")
-            .expect("DORIS_DB environment variable must be set");
+        let database =
+            std::env::var("DORIS_DB").expect("DORIS_DB environment variable must be set");
         let http_url = std::env::var("DORIS_HTTP_URL").ok();
 
         println!("Creating Doris client...");
@@ -722,10 +729,15 @@ mod tests {
                 println!("  Databases: {:?}", response.databases);
 
                 // Verify the response
-                assert!(!response.databases.is_empty(),
-                    "Should have at least one database");
-                assert_eq!(response.count, response.databases.len(),
-                    "Count should match the actual number of databases");
+                assert!(
+                    !response.databases.is_empty(),
+                    "Should have at least one database"
+                );
+                assert_eq!(
+                    response.count,
+                    response.databases.len(),
+                    "Count should match the actual number of databases"
+                );
             }
             Err(e) => {
                 eprintln!("✗ Failed to execute SHOW DATABASES: {}", e);
