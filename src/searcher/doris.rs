@@ -45,15 +45,24 @@ impl DorisClient {
         if pool_guard.is_none() {
             tracing::info!("Establishing Doris database connection...");
 
-            // Parse the URL and convert to sqlx format if needed
-            let connection_string = if self.connection_url.starts_with("mysql://") {
-                self.connection_url.clone()
-            } else {
-                format!("mysql://{}", self.connection_url)
-            };
+            // Parse URL to extract connection components
+            // Expected format: mysql://user:password@host:port/database
+            let url = &self.connection_string();
 
-            // Create connection pool
-            let pool = sqlx::MySqlPool::connect(&connection_string)
+            let options = sqlx::mysql::MySqlConnectOptions::new()
+                .host(&url.host)
+                .port(url.port)
+                .username(&url.username)
+                .password(&url.password)
+                .database(&url.database)
+                .no_engine_substitution(false)
+                .pipes_as_concat(false);
+
+            // Create connection pool with configured options
+            let pool = sqlx::mysql::MySqlPoolOptions::new()
+                .max_connections(5)
+                .acquire_timeout(std::time::Duration::from_secs(30))
+                .connect_with(options)
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to connect to Doris: {}", e);
