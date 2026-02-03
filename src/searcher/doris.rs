@@ -5,11 +5,17 @@
 use super::SearcherError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use sqlx::{Row, Column, mysql::MySqlRow};
 
 /// Doris client for executing SQL queries
 pub struct DorisClient {
-    /// MySQL connection URL (Doris uses MySQL protocol)
-    url: String,
+    /// MySQL connection pool (Doris uses MySQL protocol)
+    /// Wrapped in Arc<Mutex<>> for lazy initialization and thread-safe access
+    pool: Arc<Mutex<Option<sqlx::MySqlPool>>>,
+    /// Connection URL for lazy initialization
+    connection_url: String,
     /// HTTP API URL for metadata
     http_url: Option<String>,
     /// Optional reqwest client for HTTP API calls
@@ -17,41 +23,157 @@ pub struct DorisClient {
 }
 
 impl DorisClient {
-    /// Create a new Doris client
+    /// Create a new Doris client (connection is established lazily)
     ///
     /// # Arguments
     /// * `url` - MySQL connection URL (e.g., mysql://user:password@host:port/database)
     /// * `http_url` - Optional HTTP API URL (e.g., http://host:8030)
     pub fn new(url: String, http_url: Option<String>) -> Self {
+        tracing::info!("Creating Doris client with URL: {}", url);
+
         DorisClient {
-            url,
+            pool: Arc::new(Mutex::new(None)),
+            connection_url: url,
             http_url: http_url.clone(),
             http_client: http_url.is_some().then(reqwest::Client::new),
         }
     }
 
+    /// Ensure the database connection is established
+    async fn ensure_connected(&self) -> Result<(), SearcherError> {
+        let mut pool_guard = self.pool.lock().await;
+        if pool_guard.is_none() {
+            tracing::info!("Establishing Doris database connection...");
+
+            // Parse the URL and convert to sqlx format if needed
+            let connection_string = if self.connection_url.starts_with("mysql://") {
+                self.connection_url.clone()
+            } else {
+                format!("mysql://{}", self.connection_url)
+            };
+
+            // Create connection pool
+            let pool = sqlx::MySqlPool::connect(&connection_string)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to connect to Doris: {}", e);
+                    SearcherError::ApiError(format!("Failed to connect to Doris: {}", e))
+                })?;
+
+            tracing::info!("Successfully connected to Doris");
+            *pool_guard = Some(pool);
+        }
+        Ok(())
+    }
+
+    /// Get a clone of the pool Arc, initializing if necessary
+    async fn get_pool(&self) -> Result<Arc<Mutex<Option<sqlx::MySqlPool>>>, SearcherError> {
+        self.ensure_connected().await?;
+        Ok(Arc::clone(&self.pool))
+    }
+
     /// Execute a SQL query and return results
-    ///
-    /// This is a placeholder implementation. In a real implementation,
-    /// you would use a MySQL client library (like mysql_async or sqlx)
-    /// to execute the query.
     pub async fn execute_query(&self, sql: &str) -> Result<QueryResult, SearcherError> {
         tracing::info!("Executing Doris query: {}", sql);
 
-        // This is a placeholder implementation
-        // In production, you would:
-        // 1. Use sqlx or mysql_async to connect to Doris
-        // 2. Execute the query
-        // 3. Return the results
+        let start = std::time::Instant::now();
 
-        // For now, return a placeholder response
+        // Get the pool (initializing if necessary)
+        let pool_arc = self.get_pool().await?;
+        let pool_guard = pool_arc.lock().await;
+        let pool = pool_guard.as_ref().unwrap();
+
+        // Execute the query
+        let result = sqlx::query(sql).fetch_all(pool).await.map_err(|e| {
+            tracing::error!("Query execution failed: {}", e);
+            SearcherError::ApiError(format!("Query execution failed: {}", e))
+        })?;
+
+        let execution_time_ms = start.elapsed().as_millis() as u64;
+
+        // If no results, return empty result
+        if result.is_empty() {
+            tracing::info!("Query returned no results");
+            return Ok(QueryResult {
+                data: vec![],
+                columns: vec![],
+                row_count: 0,
+                execution_time_ms,
+                sql: sql.to_string(),
+            });
+        }
+
+        // Get column names from the first row
+        let columns: Vec<String> = result[0]
+            .columns()
+            .iter()
+            .map(|col| col.name().to_string())
+            .collect();
+
+        tracing::debug!("Query columns: {:?}", columns);
+
+        // Convert rows to HashMap format
+        let data: Vec<std::collections::HashMap<String, serde_json::Value>> = result
+            .iter()
+            .map(|row| {
+                let mut map = std::collections::HashMap::new();
+                for (i, col) in row.columns().iter().enumerate() {
+                    let col_name = col.name();
+                    let value = Self::column_to_json(row, i);
+                    map.insert(col_name.to_string(), value);
+                }
+                map
+            })
+            .collect();
+
+        let row_count = data.len();
+        tracing::info!("Query returned {} rows in {}ms", row_count, execution_time_ms);
+
         Ok(QueryResult {
-            data: vec![],
-            columns: vec![],
-            row_count: 0,
-            execution_time_ms: 0,
+            data,
+            columns,
+            row_count,
+            execution_time_ms,
             sql: sql.to_string(),
         })
+    }
+
+    /// Convert a column value to JSON value
+    fn column_to_json(row: &MySqlRow, index: usize) -> serde_json::Value {
+        use sqlx::Row;
+
+        // Try different value types based on MySQL type
+        // Try integers first
+        if let Ok(val) = row.try_get::<i64, _>(index) {
+            return serde_json::json!(val);
+        }
+        if let Ok(val) = row.try_get::<u64, _>(index) {
+            return serde_json::json!(val);
+        }
+        // Try floating point
+        if let Ok(val) = row.try_get::<f64, _>(index) {
+            return serde_json::json!(val);
+        }
+        if let Ok(val) = row.try_get::<f32, _>(index) {
+            return serde_json::json!(val);
+        }
+        // Try boolean
+        if let Ok(val) = row.try_get::<bool, _>(index) {
+            return serde_json::json!(val);
+        }
+        // Try string (handle NULL values)
+        if let Ok(val) = row.try_get::<Option<String>, _>(index) {
+            return match val {
+                Some(v) => serde_json::json!(v),
+                None => serde_json::Value::Null,
+            };
+        }
+        // Fallback to string
+        if let Ok(val) = row.try_get::<String, _>(index) {
+            return serde_json::json!(val);
+        }
+
+        serde_json::Value::Null
     }
 
     /// Get list of databases
