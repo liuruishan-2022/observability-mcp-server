@@ -391,11 +391,8 @@ impl DorisClient {
             .iter()
             .filter_map(|row| {
                 Some(QueryStat {
-                    query_id: row.get("QueryId")?.as_str()?.to_string(),
-                    user: row.get("User")?.as_str()?.to_string(),
-                    database: row.get("Db")?.as_str()?.to_string(),
-                    state: row.get("State")?.as_str()?.to_string(),
-                    duration_ms: row.get("DurationMs").and_then(|v| v.as_u64()),
+                    table_name: row.get("TableName")?.as_str()?.to_string(),
+                    query_count: row.get("QueryCount")?.as_u64().unwrap_or(0),
                 })
             })
             .collect();
@@ -498,10 +495,11 @@ impl DorisClient {
             .filter_map(|row| {
                 Some(LoadJob {
                     job_id: row.get("JobId")?.as_str()?.to_string(),
-                    database: row.get("Db")?.as_str()?.to_string(),
-                    table: row.get("Table")?.as_str()?.to_string(),
-                    state: row.get("State")?.as_str()?.to_string(),
                     label: row.get("Label")?.as_str()?.to_string(),
+                    state: row.get("State")?.as_str()?.to_string(),
+                    progress: row.get("Progress").and_then(|v| v.as_str().map(|s| s.to_string())),
+                    load_type: row.get("Type").and_then(|v| v.as_str().map(|s| s.to_string())),
+                    create_time: row.get("CreateTime").and_then(|v| v.as_str().map(|s| s.to_string())),
                 })
             })
             .collect();
@@ -599,11 +597,8 @@ pub struct BeStatusResponse {
 /// Query statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryStat {
-    pub query_id: String,
-    pub user: String,
-    pub database: String,
-    pub state: String,
-    pub duration_ms: Option<u64>,
+    pub table_name: String,
+    pub query_count: u64,
 }
 
 /// Query statistics response
@@ -651,10 +646,11 @@ pub struct RoutineLoadResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoadJob {
     pub job_id: String,
-    pub database: String,
-    pub table: String,
-    pub state: String,
     pub label: String,
+    pub state: String,
+    pub progress: Option<String>,
+    pub load_type: Option<String>,
+    pub create_time: Option<String>,
 }
 
 /// Load job response
@@ -778,5 +774,128 @@ mod tests {
                 panic!("Test failed: {}", e);
             }
         }
+    }
+
+    #[tokio::test]
+    async fn test_doris_all_methods() {
+        init();
+        dotenv::dotenv().ok();
+
+        let host = std::env::var("DORIS_HOST").expect("DORIS_HOST must be set");
+        let port = std::env::var("DORIS_PORT").unwrap_or_else(|_| "9030".to_string());
+        let username = std::env::var("DORIS_USERNAME").expect("DORIS_USERNAME must be set");
+        let password = std::env::var("DORIS_PASSWORD").expect("DORIS_PASSWORD must be set");
+        let database = std::env::var("DORIS_DB").expect("DORIS_DB must be set");
+        let http_url = std::env::var("DORIS_HTTP_URL").ok();
+
+        let client = DorisClient::new(host, port, username, password, database, http_url);
+
+        println!("\n=== Testing All Doris Methods ===\n");
+
+        // Test 1: get_databases
+        println!("1. Testing get_databases()...");
+        match client.get_databases().await {
+            Ok(response) => println!("   ✓ Found {} databases", response.count),
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        // Test 2: get_tables
+        println!("2. Testing get_tables()...");
+        match client.get_tables(&std::env::var("DORIS_DB").unwrap()).await {
+            Ok(response) => println!("   ✓ Found {} tables", response.count),
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        // Test 3: get_table_schema (use first table from get_tables)
+        println!("3. Testing get_table_schema()...");
+        match client.get_tables(&std::env::var("DORIS_DB").unwrap()).await {
+            Ok(tables_resp) => {
+                if let Some(first_table) = tables_resp.tables.first() {
+                    match client.get_table_schema(&std::env::var("DORIS_DB").unwrap(), first_table).await {
+                        Ok(schema) => println!("   ✓ Table {} has {} columns", first_table, schema.column_count),
+                        Err(e) => println!("   ✗ Failed: {}", e),
+                    }
+                } else {
+                    println!("   ⊘ No tables found to test schema");
+                }
+            }
+            Err(e) => println!("   ✗ Failed to get tables: {}", e),
+        }
+
+        // Test 4: get_table_metadata
+        println!("4. Testing get_table_metadata()...");
+        match client.get_tables(&std::env::var("DORIS_DB").unwrap()).await {
+            Ok(tables_resp) => {
+                if let Some(first_table) = tables_resp.tables.first() {
+                    match client.get_table_metadata(&std::env::var("DORIS_DB").unwrap(), first_table).await {
+                        Ok(metadata) => println!("   ✓ Table {} metadata: {} rows", first_table, metadata.row_count.unwrap_or(0)),
+                        Err(e) => println!("   ✗ Failed: {}", e),
+                    }
+                }
+            }
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        // Test 5: get_fe_status
+        println!("5. Testing get_fe_status()...");
+        match client.get_fe_status().await {
+            Ok(response) => println!("   ✓ FE status: {}, name: {:?}", response.status, response.name),
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        // Test 6: get_be_status
+        println!("6. Testing get_be_status()...");
+        match client.get_be_status().await {
+            Ok(response) => println!("   ✓ BE status: {}/{} alive", response.alive, response.total),
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        // Test 7: get_query_stats
+        println!("7. Testing get_query_stats()...");
+        match client.execute_query("SHOW QUERY STATS").await {
+            Ok(result) => {
+                println!("      Raw result: {} rows, columns: {:?}", result.row_count, result.columns);
+                if let Some(first_row) = result.data.first() {
+                    println!("      First row keys: {:?}", first_row.keys().collect::<Vec<_>>());
+                }
+            }
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+        match client.get_query_stats().await {
+            Ok(response) => println!("   ✓ Found {} query stats", response.total),
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        // Test 8: get_routine_loads
+        println!("8. Testing get_routine_loads()...");
+        match client.get_routine_loads().await {
+            Ok(response) => println!("   ✓ Found {} routine load jobs", response.total),
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        // Test 9: get_load_jobs
+        println!("9. Testing get_load_jobs()...");
+        match client.execute_query(&format!("SHOW LOAD FROM {} LIMIT 1", std::env::var("DORIS_DB").unwrap())).await {
+            Ok(result) => {
+                println!("      Raw SHOW LOAD result (limited): {} rows, columns: {:?}", result.row_count, result.columns);
+                if let Some(first_row) = result.data.first() {
+                    println!("      First row keys: {:?}", first_row.keys().collect::<Vec<_>>());
+                }
+            }
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+        match client.get_load_jobs().await {
+            Ok(response) => println!("   ✓ Found {} load jobs", response.total),
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        // Test 10: execute_query (custom SQL)
+        println!("10. Testing execute_query() with SELECT 1...");
+        match client.execute_query("SELECT 1 as test_column").await {
+            Ok(result) => println!("   ✓ Query returned: {:?}", result.data.first()),
+            Err(e) => println!("   ✗ Failed: {}", e),
+        }
+
+        println!("\n=== All Tests Completed ===\n");
     }
 }
