@@ -8,7 +8,6 @@ use sqlx::{Column, Row, mysql::MySqlRow};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::info;
 
 /// Doris client for executing SQL queries
 pub struct DorisClient {
@@ -670,7 +669,7 @@ mod tests {
     use super::*;
 
     fn init() {
-        tracing_subscriber::fmt().init();
+        let _ = tracing_subscriber::fmt().try_init();
     }
 
     #[tokio::test]
