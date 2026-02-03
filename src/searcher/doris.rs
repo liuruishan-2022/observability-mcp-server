@@ -254,20 +254,61 @@ impl DorisClient {
     /// Get routine load jobs
     pub async fn get_routine_loads(&self) -> Result<RoutineLoadResponse, SearcherError> {
         let sql = "SHOW ROUTINE LOAD";
+        tracing::info!("Getting routine load jobs with SQL: {}", sql);
+
         let result = self.execute_query(sql).await?;
+        tracing::info!(
+            "Query executed, returned {} rows, columns: {:?}",
+            result.row_count,
+            result.columns
+        );
+
+        // Log raw data for debugging
+        if !result.data.is_empty() {
+            tracing::debug!("First row data: {:?}", result.data[0]);
+        } else {
+            tracing::warn!("No routine load data returned from query");
+        }
 
         let jobs: Vec<RoutineLoadJob> = result
             .data
             .iter()
             .filter_map(|row| {
-                Some(RoutineLoadJob {
-                    name: row.get("Name")?.as_str()?.to_string(),
-                    database: row.get("Db")?.as_str()?.to_string(),
-                    table: row.get("TableName")?.as_str()?.to_string(),
-                    state: row.get("State")?.as_str()?.to_string(),
-                })
+                tracing::debug!("Processing row: {:?}", row);
+
+                let name = row.get("Name").and_then(|v| v.as_str());
+                let db = row.get("Db").and_then(|v| v.as_str());
+                let table = row.get("TableName").and_then(|v| v.as_str());
+                let state = row.get("State").and_then(|v| v.as_str());
+
+                if let (Some(name), Some(db), Some(table), Some(state)) = (name, db, table, state) {
+                    tracing::debug!(
+                        "Parsed routine load: name={}, db={}, table={}, state={}",
+                        name,
+                        db,
+                        table,
+                        state
+                    );
+                    Some(RoutineLoadJob {
+                        name: name.to_string(),
+                        database: db.to_string(),
+                        table: table.to_string(),
+                        state: state.to_string(),
+                    })
+                } else {
+                    tracing::warn!(
+                        "Failed to parse row, got values - Name: {:?}, Db: {:?}, TableName: {:?}, State: {:?}",
+                        row.get("Name"),
+                        row.get("Db"),
+                        row.get("TableName"),
+                        row.get("State")
+                    );
+                    None
+                }
             })
             .collect();
+
+        tracing::info!("Successfully parsed {} routine load jobs", jobs.len());
 
         Ok(RoutineLoadResponse {
             total: jobs.len(),
