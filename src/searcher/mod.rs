@@ -64,7 +64,11 @@ pub enum SearcherError {
 /// - `KAFKA_USERNAME`: Kafka SASL username (可选)
 /// - `KAFKA_PASSWORD`: Kafka SASL password (可选)
 /// - `KAFKA_SECURITY_PROTOCOL`: Kafka security protocol (可选)
-/// - `DORIS_URL`: Doris MySQL 连接 URL (可选, e.g., mysql://user:password@host:port/database)
+/// - `DORIS_HOST`: Doris 主机地址 (可选)
+/// - `DORIS_PORT`: Doris MySQL 协议端口 (可���, 默认 9030)
+/// - `DORIS_USERNAME`: Doris 用户名 (可选)
+/// - `DORIS_PASSWORD`: Doris 密码 (可选)
+/// - `DORIS_DB`: Doris 数据库名 (可选)
 /// - `DORIS_HTTP_URL`: Doris HTTP API URL (可选, e.g., http://host:8030)
 ///
 /// # 示例
@@ -108,9 +112,18 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
     };
 
     // Doris 配置是可选的
-    let doris = if let Ok(url) = var("DORIS_URL") {
-        let http_url = var("DORIS_HTTP_URL").ok();
-        Some(DorisClient::new(url, http_url))
+    let doris = if let Ok(host) = var("DORIS_HOST") {
+        let port = var("DORIS_PORT").unwrap_or_else(|_| "9030".to_string());
+        if let (Ok(username), Ok(password), Ok(db)) = (
+            var("DORIS_USERNAME"),
+            var("DORIS_PASSWORD"),
+            var("DORIS_DB"),
+        ) {
+            let http_url = var("DORIS_HTTP_URL").ok();
+            Some(DorisClient::new(host, port, username, password, db, http_url))
+        } else {
+            None
+        }
     } else {
         None
     };

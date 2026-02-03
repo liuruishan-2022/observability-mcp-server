@@ -9,22 +9,17 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use sqlx::{Row, Column, mysql::MySqlRow};
 
-/// Parsed MySQL connection URL components
-struct MySqlConnectionUrl {
-    host: String,
-    port: u16,
-    username: String,
-    password: String,
-    database: String,
-}
-
 /// Doris client for executing SQL queries
 pub struct DorisClient {
     /// MySQL connection pool (Doris uses MySQL protocol)
     /// Wrapped in Arc<Mutex<>> for lazy initialization and thread-safe access
     pool: Arc<Mutex<Option<sqlx::MySqlPool>>>,
-    /// Connection URL for lazy initialization
-    connection_url: String,
+    /// Connection components for lazy initialization
+    host: String,
+    port: u16,
+    username: String,
+    password: String,
+    database: String,
     /// HTTP API URL for metadata
     http_url: Option<String>,
     /// Optional reqwest client for HTTP API calls
@@ -32,53 +27,26 @@ pub struct DorisClient {
 }
 
 impl DorisClient {
-    /// Parse MySQL connection URL
-    /// Expected format: mysql://user:password@host:port/database
-    fn parse_connection_url(&self) -> MySqlConnectionUrl {
-        let url = self.connection_url.strip_prefix("mysql://")
-            .unwrap_or(&self.connection_url);
+    /// Create a new Doris client (connection is established lazily)
+    ///
+    /// # Arguments
+    /// * `host` - Doris host address
+    /// * `port` - Doris MySQL protocol port (default 9030)
+    /// * `username` - Doris username
+    /// * `password` - Doris password
+    /// * `database` - Default database name
+    /// * `http_url` - Optional HTTP API URL (e.g., http://host:8030)
+    pub fn new(host: String, port: String, username: String, password: String, database: String, http_url: Option<String>) -> Self {
+        let port = port.parse::<u16>().unwrap_or(9030);
+        tracing::info!("Creating Doris client with {}:{}", host, port);
 
-        // Parse user:password@host:port/database
-        let mut parts = url.split('@');
-        let auth = parts.next().unwrap_or("");
-        let rest = parts.next().unwrap_or("");
-
-        // Parse username:password
-        let mut auth_parts = auth.split(':');
-        let username = auth_parts.next().unwrap_or("root").to_string();
-        let password = auth_parts.next().unwrap_or("").to_string();
-
-        // Parse host:port/database
-        let mut host_parts = rest.split('/');
-        let host_port = host_parts.next().unwrap_or("");
-        let database = host_parts.next().unwrap_or("information_schema").to_string();
-
-        // Parse host:port
-        let mut addr_parts = host_port.split(':');
-        let host = addr_parts.next().unwrap_or("localhost").to_string();
-        let port = addr_parts.next()
-            .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(3306);
-
-        MySqlConnectionUrl {
+        DorisClient {
+            pool: Arc::new(Mutex::new(None)),
             host,
             port,
             username,
             password,
             database,
-        }
-    }
-    /// Create a new Doris client (connection is established lazily)
-    ///
-    /// # Arguments
-    /// * `url` - MySQL connection URL (e.g., mysql://user:password@host:port/database)
-    /// * `http_url` - Optional HTTP API URL (e.g., http://host:8030)
-    pub fn new(url: String, http_url: Option<String>) -> Self {
-        tracing::info!("Creating Doris client with URL: {}", url);
-
-        DorisClient {
-            pool: Arc::new(Mutex::new(None)),
-            connection_url: url,
             http_url: http_url.clone(),
             http_client: http_url.is_some().then(reqwest::Client::new),
         }
@@ -90,16 +58,12 @@ impl DorisClient {
         if pool_guard.is_none() {
             tracing::info!("Establishing Doris database connection...");
 
-            // Parse URL to extract connection components
-            // Expected format: mysql://user:password@host:port/database
-            let url = self.parse_connection_url();
-
             let options = sqlx::mysql::MySqlConnectOptions::new()
-                .host(&url.host)
-                .port(url.port)
-                .username(&url.username)
-                .password(&url.password)
-                .database(&url.database)
+                .host(&self.host)
+                .port(self.port)
+                .username(&self.username)
+                .password(&self.password)
+                .database(&self.database)
                 .no_engine_substitution(false)
                 .pipes_as_concat(false);
 
@@ -650,3 +614,7 @@ pub struct LoadJobResponse {
     pub total: usize,
     pub jobs: Vec<LoadJob>,
 }
+
+// Include tests
+#[path = "doris_test.rs"]
+mod tests;
