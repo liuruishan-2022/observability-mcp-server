@@ -416,6 +416,36 @@ pub struct DorisGetRoutineLoadsRequest {}
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetLoadJobsRequest {}
 
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisExecQueryRequest {
+    #[schemars(description = "SQL 语句")]
+    pub sql: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetTableCommentRequest {
+    #[schemars(description = "数据库名称")]
+    pub database: String,
+    #[schemars(description = "表名称")]
+    pub table: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetTableIndexesRequest {
+    #[schemars(description = "数据库名称")]
+    pub database: String,
+    #[schemars(description = "表名称")]
+    pub table: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetSqlExplainRequest {
+    #[schemars(description = "SQL 语句")]
+    pub sql: String,
+    #[schemars(description = "是否显示详细信息")]
+    pub verbose: Option<bool>,
+}
+
 pub struct Tools {
     tool_router: ToolRouter<Tools>,
     searcher: Searcher,
@@ -1474,12 +1504,131 @@ impl Tools {
 
     #[tool(description = "获取 Doris Load 任务列表")]
     pub async fn doris_get_load_jobs(&self, _params: Parameters<DorisGetLoadJobsRequest>) -> String {
-        info!("获取 Doris Load 任务列表");
+        info!("获取 Doris Load 任���列表");
         match self.searcher.doris() {
             Some(doris) => match doris.get_load_jobs().await {
                 Ok(jobs) => serde_json::to_string(&jobs)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "执行 SQL 查询")]
+    pub async fn doris_exec_query(&self, Parameters(params): Parameters<DorisExecQueryRequest>) -> String {
+        info!("执行 Doris SQL 查询: {}", params.sql);
+        match self.searcher.doris() {
+            Some(doris) => match doris.execute_query(&params.sql).await {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取表注释信息")]
+    pub async fn doris_get_table_comment(&self, Parameters(params): Parameters<DorisGetTableCommentRequest>) -> String {
+        info!("获取 Doris 表注释: {}.{}", params.database, params.table);
+        match self.searcher.doris() {
+            Some(doris) => {
+                // Query table comment from information_schema
+                let sql = format!(
+                    "SELECT TABLE_COMMENT FROM information_schema.TABLES
+                     WHERE TABLE_SCHEMA = '{}' AND TABLE_NAME = '{}'",
+                    params.database, params.table
+                );
+                match doris.execute_query(&sql).await {
+                    Ok(result) => {
+                        if let Some(row) = result.data.first() {
+                            let comment = row.get("TABLE_COMMENT")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+                            serde_json::json!({
+                                "database": params.database,
+                                "table": params.table,
+                                "comment": comment
+                            }).to_string()
+                        } else {
+                            serde_json::json!({
+                                "database": params.database,
+                                "table": params.table,
+                                "comment": null
+                            }).to_string()
+                        }
+                    }
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取表列注释信息")]
+    pub async fn doris_get_table_column_comments(&self, Parameters(params): Parameters<DorisGetTableCommentRequest>) -> String {
+        info!("获取 Doris 表列注释: {}.{}", params.database, params.table);
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_table_schema(&params.database, &params.table).await {
+                Ok(schema) => {
+                    let columns: Vec<serde_json::Value> = schema.columns
+                        .into_iter()
+                        .map(|col| {
+                            serde_json::json!({
+                                "column_name": col.name,
+                                "data_type": col.data_type,
+                                "comment": col.comment.unwrap_or_else(|| "".to_string())
+                            })
+                        })
+                        .collect();
+
+                    serde_json::json!({
+                        "database": params.database,
+                        "table": params.table,
+                        "columns": columns
+                    }).to_string()
+                }
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取表索引信息")]
+    pub async fn doris_get_table_indexes(&self, Parameters(params): Parameters<DorisGetTableIndexesRequest>) -> String {
+        info!("获取 Doris 表索引: {}.{}", params.database, params.table);
+        match self.searcher.doris() {
+            Some(doris) => {
+                let sql = format!(
+                    "SHOW INDEX FROM `{}`.`{}`",
+                    params.database, params.table
+                );
+                match doris.execute_query(&sql).await {
+                    Ok(result) => serde_json::to_string(&result)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 SQL 执行计划")]
+    pub async fn doris_get_sql_explain(&self, Parameters(params): Parameters<DorisGetSqlExplainRequest>) -> String {
+        info!("获取 Doris SQL 执行计划: {}", params.sql);
+        match self.searcher.doris() {
+            Some(doris) => {
+                let verbose = params.verbose.unwrap_or(false);
+                let sql = if verbose {
+                    format!("EXPLAIN VERBOSE {}", params.sql)
+                } else {
+                    format!("EXPLAIN {}", params.sql)
+                };
+                match doris.execute_query(&sql).await {
+                    Ok(result) => serde_json::to_string(&result)
+                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                    Err(e) => format!("Error: {}", e),
+                }
             },
             None => "Error: Doris client not configured".to_string(),
         }
