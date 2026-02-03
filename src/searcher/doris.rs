@@ -4,10 +4,10 @@
 
 use super::SearcherError;
 use serde::{Deserialize, Serialize};
+use sqlx::{Column, Row, mysql::MySqlRow};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use sqlx::{Row, Column, mysql::MySqlRow};
 
 /// Doris client for executing SQL queries
 pub struct DorisClient {
@@ -36,7 +36,14 @@ impl DorisClient {
     /// * `password` - Doris password
     /// * `database` - Default database name
     /// * `http_url` - Optional HTTP API URL (e.g., http://host:8030)
-    pub fn new(host: String, port: String, username: String, password: String, database: String, http_url: Option<String>) -> Self {
+    pub fn new(
+        host: String,
+        port: String,
+        username: String,
+        password: String,
+        database: String,
+        http_url: Option<String>,
+    ) -> Self {
         let port = port.parse::<u16>().unwrap_or(9030);
         tracing::info!("Creating Doris client with {}:{}", host, port);
 
@@ -67,7 +74,6 @@ impl DorisClient {
                 .no_engine_substitution(false)
                 .pipes_as_concat(false);
 
-            // Create connection pool with configured options
             let pool = sqlx::mysql::MySqlPoolOptions::new()
                 .max_connections(5)
                 .acquire_timeout(std::time::Duration::from_secs(30))
@@ -101,8 +107,8 @@ impl DorisClient {
         let pool_guard = pool_arc.lock().await;
         let pool = pool_guard.as_ref().unwrap();
 
-        // Execute the query
-        let result = sqlx::query(sql).fetch_all(pool).await.map_err(|e| {
+        // Execute the query using raw_sql for better Doris compatibility
+        let result = sqlx::raw_sql(sql).fetch_all(pool).await.map_err(|e| {
             tracing::error!("Query execution failed: {}", e);
             SearcherError::ApiError(format!("Query execution failed: {}", e))
         })?;
@@ -145,7 +151,11 @@ impl DorisClient {
             .collect();
 
         let row_count = data.len();
-        tracing::info!("Query returned {} rows in {}ms", row_count, execution_time_ms);
+        tracing::info!(
+            "Query returned {} rows in {}ms",
+            row_count,
+            execution_time_ms
+        );
 
         Ok(QueryResult {
             data,
@@ -208,10 +218,7 @@ impl DorisClient {
             .collect();
 
         let count = databases.len();
-        Ok(DatabaseListResponse {
-            databases,
-            count,
-        })
+        Ok(DatabaseListResponse { databases, count })
     }
 
     /// Get list of tables in a database
@@ -260,8 +267,12 @@ impl DorisClient {
                     name: row.get("COLUMN_NAME")?.as_str()?.to_string(),
                     data_type: row.get("DATA_TYPE")?.as_str()?.to_string(),
                     is_nullable: row.get("IS_NULLABLE")?.as_str()?.to_string(),
-                    default_value: row.get("COLUMN_DEFAULT").and_then(|v| v.as_str().map(|s| s.to_string())),
-                    comment: row.get("COLUMN_COMMENT").and_then(|v| v.as_str().map(|s| s.to_string())),
+                    default_value: row
+                        .get("COLUMN_DEFAULT")
+                        .and_then(|v| v.as_str().map(|s| s.to_string())),
+                    comment: row
+                        .get("COLUMN_COMMENT")
+                        .and_then(|v| v.as_str().map(|s| s.to_string())),
                 })
             })
             .collect();
@@ -298,8 +309,12 @@ impl DorisClient {
                 row_count: row.get("TABLE_ROWS").and_then(|v| v.as_u64()),
                 data_length: row.get("DATA_LENGTH").and_then(|v| v.as_u64()),
                 index_length: row.get("INDEX_LENGTH").and_then(|v| v.as_u64()),
-                create_time: row.get("CREATE_TIME").and_then(|v| v.as_str().map(|s| s.to_string())),
-                update_time: row.get("UPDATE_TIME").and_then(|v| v.as_str().map(|s| s.to_string())),
+                create_time: row
+                    .get("CREATE_TIME")
+                    .and_then(|v| v.as_str().map(|s| s.to_string())),
+                update_time: row
+                    .get("UPDATE_TIME")
+                    .and_then(|v| v.as_str().map(|s| s.to_string())),
             })
         } else {
             Err(SearcherError::ApiError(format!(
@@ -615,6 +630,107 @@ pub struct LoadJobResponse {
     pub jobs: Vec<LoadJob>,
 }
 
-// Include tests
-#[path = "doris_test.rs"]
-mod tests;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_doris_routine_load() {
+        // Load environment variables from .env file
+        dotenv::dotenv().ok();
+
+        // Get configuration from environment variables
+        let host = std::env::var("DORIS_HOST")
+            .expect("DORIS_HOST environment variable must be set");
+        let port = std::env::var("DORIS_PORT")
+            .unwrap_or_else(|_| "9030".to_string());
+        let username = std::env::var("DORIS_USERNAME")
+            .expect("DORIS_USERNAME environment variable must be set");
+        let password = std::env::var("DORIS_PASSWORD")
+            .expect("DORIS_PASSWORD environment variable must be set");
+        let database = std::env::var("DORIS_DB")
+            .expect("DORIS_DB environment variable must be set");
+        let http_url = std::env::var("DORIS_HTTP_URL").ok();
+
+        println!("Creating Doris client...");
+        println!("  Host: {}", host);
+        println!("  Port: {}", port);
+        println!("  Username: {}", username);
+        println!("  Database: {}", database);
+        println!("  HTTP URL: {:?}", http_url);
+
+        // Create Doris client
+        let client = DorisClient::new(host, port, username, password, database, http_url);
+
+        // Test: Execute SHOW ROUTINE LOAD
+        println!("\nExecuting: SHOW ROUTINE LOAD");
+        match client.get_routine_loads().await {
+            Ok(response) => {
+                println!("✓ Successfully executed SHOW ROUTINE LOAD");
+                println!("  Total jobs: {}", response.total);
+
+                if response.total > 0 {
+                    println!("  Jobs:");
+                    for (i, job) in response.jobs.iter().enumerate() {
+                        println!("    {}. Name: {}", i + 1, job.name);
+                        println!("       Database: {}", job.database);
+                        println!("       Table: {}", job.table);
+                        println!("       State: {}", job.state);
+                    }
+                } else {
+                    println!("  No routine load jobs found");
+                }
+
+                // Verify the response
+                assert_eq!(response.total, response.jobs.len(),
+                    "Total count should match the actual number of jobs");
+            }
+            Err(e) => {
+                eprintln!("✗ Failed to execute SHOW ROUTINE LOAD: {}", e);
+                panic!("Test failed: {}", e);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_doris_execute_sql() {
+        // Load environment variables from .env file
+        dotenv::dotenv().ok();
+
+        // Get configuration from environment variables
+        let host = std::env::var("DORIS_HOST")
+            .expect("DORIS_HOST environment variable must be set");
+        let port = std::env::var("DORIS_PORT")
+            .unwrap_or_else(|_| "9030".to_string());
+        let username = std::env::var("DORIS_USERNAME")
+            .expect("DORIS_USERNAME environment variable must be set");
+        let password = std::env::var("DORIS_PASSWORD")
+            .expect("DORIS_PASSWORD environment variable must be set");
+        let database = std::env::var("DORIS_DB")
+            .expect("DORIS_DB environment variable must be set");
+        let http_url = std::env::var("DORIS_HTTP_URL").ok();
+
+        println!("Creating Doris client...");
+        let client = DorisClient::new(host, port, username, password, database, http_url);
+
+        // Test: Execute SHOW DATABASES
+        println!("\nExecuting: SHOW DATABASES");
+        match client.get_databases().await {
+            Ok(response) => {
+                println!("✓ Successfully executed SHOW DATABASES");
+                println!("  Total databases: {}", response.count);
+                println!("  Databases: {:?}", response.databases);
+
+                // Verify the response
+                assert!(!response.databases.is_empty(),
+                    "Should have at least one database");
+                assert_eq!(response.count, response.databases.len(),
+                    "Count should match the actual number of databases");
+            }
+            Err(e) => {
+                eprintln!("✗ Failed to execute SHOW DATABASES: {}", e);
+                panic!("Test failed: {}", e);
+            }
+        }
+    }
+}
