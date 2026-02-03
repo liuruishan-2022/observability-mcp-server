@@ -9,6 +9,15 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use sqlx::{Row, Column, mysql::MySqlRow};
 
+/// Parsed MySQL connection URL components
+struct MySqlConnectionUrl {
+    host: String,
+    port: u16,
+    username: String,
+    password: String,
+    database: String,
+}
+
 /// Doris client for executing SQL queries
 pub struct DorisClient {
     /// MySQL connection pool (Doris uses MySQL protocol)
@@ -23,6 +32,42 @@ pub struct DorisClient {
 }
 
 impl DorisClient {
+    /// Parse MySQL connection URL
+    /// Expected format: mysql://user:password@host:port/database
+    fn parse_connection_url(&self) -> MySqlConnectionUrl {
+        let url = self.connection_url.strip_prefix("mysql://")
+            .unwrap_or(&self.connection_url);
+
+        // Parse user:password@host:port/database
+        let mut parts = url.split('@');
+        let auth = parts.next().unwrap_or("");
+        let rest = parts.next().unwrap_or("");
+
+        // Parse username:password
+        let mut auth_parts = auth.split(':');
+        let username = auth_parts.next().unwrap_or("root").to_string();
+        let password = auth_parts.next().unwrap_or("").to_string();
+
+        // Parse host:port/database
+        let mut host_parts = rest.split('/');
+        let host_port = host_parts.next().unwrap_or("");
+        let database = host_parts.next().unwrap_or("information_schema").to_string();
+
+        // Parse host:port
+        let mut addr_parts = host_port.split(':');
+        let host = addr_parts.next().unwrap_or("localhost").to_string();
+        let port = addr_parts.next()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(3306);
+
+        MySqlConnectionUrl {
+            host,
+            port,
+            username,
+            password,
+            database,
+        }
+    }
     /// Create a new Doris client (connection is established lazily)
     ///
     /// # Arguments
@@ -47,7 +92,7 @@ impl DorisClient {
 
             // Parse URL to extract connection components
             // Expected format: mysql://user:password@host:port/database
-            let url = &self.connection_string();
+            let url = self.parse_connection_url();
 
             let options = sqlx::mysql::MySqlConnectOptions::new()
                 .host(&url.host)
