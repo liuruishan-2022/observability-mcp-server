@@ -8,6 +8,7 @@ use sqlx::{Column, Row, mysql::MySqlRow};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tracing::info;
 
 /// Doris client for executing SQL queries
 pub struct DorisClient {
@@ -424,37 +425,53 @@ impl DorisClient {
         } else {
             tracing::warn!("No routine load data returned from query");
         }
-
         let jobs: Vec<RoutineLoadJob> = result
             .data
             .iter()
             .filter_map(|row| {
                 tracing::debug!("Processing row: {:?}", row);
 
+                let id = row.get("Id").and_then(|v| v.as_str());
                 let name = row.get("Name").and_then(|v| v.as_str());
-                let db = row.get("Db").and_then(|v| v.as_str());
+                let db = row.get("DbName").or_else(|| row.get("Db")).and_then(|v| v.as_str());
                 let table = row.get("TableName").and_then(|v| v.as_str());
                 let state = row.get("State").and_then(|v| v.as_str());
 
-                if let (Some(name), Some(db), Some(table), Some(state)) = (name, db, table, state) {
+                if let (Some(id), Some(name), Some(db), Some(table), Some(state)) = (id, name, db, table, state) {
                     tracing::debug!(
-                        "Parsed routine load: name={}, db={}, table={}, state={}",
-                        name,
-                        db,
-                        table,
-                        state
+                        "Parsed routine load: id={}, name={}, db={}, table={}, state={}",
+                        id, name, db, table, state
                     );
                     Some(RoutineLoadJob {
+                        id: id.to_string(),
                         name: name.to_string(),
                         database: db.to_string(),
                         table: table.to_string(),
                         state: state.to_string(),
+                        create_time: row.get("CreateTime").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        end_time: row.get("EndTime").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        pause_time: row.get("PauseTime").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        data_source_type: row.get("DataSourceType").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        data_source_properties: row.get("DataSourceProperties").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        custom_properties: row.get("CustomProperties").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        statistic: row.get("Statistic").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        progress: row.get("Progress").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        lag: row.get("Lag").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        job_properties: row.get("JobProperties").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        error_log_urls: row.get("ErrorLogUrls").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        other_msg: row.get("OtherMsg").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        reason_of_state_changed: row.get("ReasonOfStateChanged").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        is_multi_table: row.get("IsMultiTable").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        current_task_num: row.get("CurrentTaskNum").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        user: row.get("User").and_then(|v| v.as_str().map(|s| s.to_string())),
+                        comment: row.get("Comment").and_then(|v| v.as_str().map(|s| s.to_string())),
                     })
                 } else {
                     tracing::warn!(
-                        "Failed to parse row, got values - Name: {:?}, Db: {:?}, TableName: {:?}, State: {:?}",
+                        "Failed to parse row, got values - Id: {:?}, Name: {:?}, DbName: {:?}, TableName: {:?}, State: {:?}",
+                        row.get("Id"),
                         row.get("Name"),
-                        row.get("Db"),
+                        row.get("DbName").or_else(|| row.get("Db")),
                         row.get("TableName"),
                         row.get("State")
                     );
@@ -600,10 +617,28 @@ pub struct QueryStatsResponse {
 /// Routine load job
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoutineLoadJob {
+    pub id: String,
     pub name: String,
     pub database: String,
     pub table: String,
     pub state: String,
+    pub create_time: Option<String>,
+    pub end_time: Option<String>,
+    pub pause_time: Option<String>,
+    pub data_source_type: Option<String>,
+    pub data_source_properties: Option<String>,
+    pub custom_properties: Option<String>,
+    pub statistic: Option<String>,
+    pub progress: Option<String>,
+    pub lag: Option<String>,
+    pub job_properties: Option<String>,
+    pub error_log_urls: Option<String>,
+    pub other_msg: Option<String>,
+    pub reason_of_state_changed: Option<String>,
+    pub is_multi_table: Option<String>,
+    pub current_task_num: Option<String>,
+    pub user: Option<String>,
+    pub comment: Option<String>,
 }
 
 /// Routine load response
