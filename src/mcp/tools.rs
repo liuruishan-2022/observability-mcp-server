@@ -379,6 +379,48 @@ pub struct KafkaConsumeMessagesRequest {
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetDatabasesRequest {}
 
+// ========== Kubernetes 相关数据结构 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KubeListPodsRequest {
+    #[schemars(description = "命名空间，可选")]
+    pub namespace: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KubeGetPodRequest {
+    #[schemars(description = "Pod 名称")]
+    pub name: String,
+    #[schemars(description = "命名空间，可选")]
+    pub namespace: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KubeDeletePodRequest {
+    #[schemars(description = "Pod 名称")]
+    pub name: String,
+    #[schemars(description = "命名空间，可选")]
+    pub namespace: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KubeListNamespacesRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KubeListEventsRequest {
+    #[schemars(description = "命名空间，可选")]
+    pub namespace: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KubeListContextsRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct KubeGetConfigRequest {
+    #[schemars(description = "是否精简输出，仅显示当前 context 相关信息")]
+    pub minified: Option<bool>,
+}
+
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetTablesRequest {
     #[schemars(description = "数据库名称")]
@@ -444,6 +486,54 @@ pub struct DorisGetSqlExplainRequest {
     pub sql: String,
     #[schemars(description = "是否显示详细信息")]
     pub verbose: Option<bool>,
+}
+
+// ========== 企业微信机器人请求结构体 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct WeixinSendTextRequest {
+    #[schemars(description = "消息内容")]
+    pub content: String,
+    #[schemars(description = "提及的用户列表，如 [\"wangqing\", \"@all\"]")]
+    pub mentioned_list: Option<Vec<String>>,
+    #[schemars(description = "提及的手机号列表，如 [\"13800001111\", \"@all\"]")]
+    pub mentioned_mobile_list: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct WeixinSendMarkdownRequest {
+    #[schemars(description = "Markdown 内容")]
+    pub content: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct WeixinSendImageRequest {
+    #[schemars(description = "图片媒体 ID")]
+    pub media_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct WeixinSendFileRequest {
+    #[schemars(description = "文件媒体 ID")]
+    pub media_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct WeixinArticle {
+    #[schemars(description = "标题")]
+    pub title: String,
+    #[schemars(description = "描述")]
+    pub description: String,
+    #[schemars(description = "点击后跳转的链接")]
+    pub url: String,
+    #[schemars(description = "图片链接，可选")]
+    pub picurl: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct WeixinSendNewsRequest {
+    #[schemars(description = "图文消息文章列表")]
+    pub articles: Vec<WeixinArticle>,
 }
 
 pub struct Tools {
@@ -1633,6 +1723,171 @@ impl Tools {
             None => "Error: Doris client not configured".to_string(),
         }
     }
+
+    // ========== Kubernetes Tools ==========
+
+    #[tool(description = "列出 Kubernetes Pod")]
+    pub async fn kube_list_pods(&self, Parameters(params): Parameters<KubeListPodsRequest>) -> String {
+        info!("列出 Kubernetes Pods: namespace={:?}", params.namespace);
+        match self.searcher.kubernetes() {
+            Some(kube) => match kube.list_pods(params.namespace.as_deref()).await {
+                Ok(pods) => serde_json::to_string(&pods)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kubernetes client not configured. Make sure you have a valid kubeconfig file.".to_string(),
+        }
+    }
+
+    #[tool(description = "获取指定的 Kubernetes Pod")]
+    pub async fn kube_get_pod(&self, Parameters(params): Parameters<KubeGetPodRequest>) -> String {
+        info!("获取 Kubernetes Pod: {}", params.name);
+        match self.searcher.kubernetes() {
+            Some(kube) => match kube.get_pod(&params.name, params.namespace.as_deref()).await {
+                Ok(pod) => serde_json::to_string(&pod)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kubernetes client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "删除 Kubernetes Pod")]
+    pub async fn kube_delete_pod(&self, Parameters(params): Parameters<KubeDeletePodRequest>) -> String {
+        info!("删除 Kubernetes Pod: {}", params.name);
+        match self.searcher.kubernetes() {
+            Some(kube) => match kube.delete_pod(&params.name, params.namespace.as_deref()).await {
+                Ok(result) => result,
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kubernetes client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "列出 Kubernetes 命名空间")]
+    pub async fn kube_list_namespaces(&self, _params: Parameters<KubeListNamespacesRequest>) -> String {
+        info!("列出 Kubernetes 命名空间");
+        match self.searcher.kubernetes() {
+            Some(kube) => match kube.list_namespaces().await {
+                Ok(namespaces) => serde_json::to_string(&namespaces)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kubernetes client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "列出 Kubernetes 事件")]
+    pub async fn kube_list_events(&self, Parameters(params): Parameters<KubeListEventsRequest>) -> String {
+        info!("列出 Kubernetes 事件: namespace={:?}", params.namespace);
+        match self.searcher.kubernetes() {
+            Some(kube) => match kube.list_events(params.namespace.as_deref()).await {
+                Ok(events) => serde_json::to_string(&events)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kubernetes client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "列出所有可用的 Kubernetes contexts")]
+    pub async fn kube_list_contexts(&self, _params: Parameters<KubeListContextsRequest>) -> String {
+        info!("列出 Kubernetes contexts");
+        match self.searcher.kubernetes() {
+            Some(kube) => match kube.list_contexts().await {
+                Ok(contexts) => serde_json::to_string(&contexts)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kubernetes client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取当前 kubeconfig 内容")]
+    pub async fn kube_get_config(&self, Parameters(params): Parameters<KubeGetConfigRequest>) -> String {
+        info!("获取 Kubernetes 配置: minified={:?}", params.minified);
+        match self.searcher.kubernetes() {
+            Some(kube) => match kube.get_config(params.minified.unwrap_or(false)).await {
+                Ok(config) => config,
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Kubernetes client not configured".to_string(),
+        }
+    }
+
+    // ========== 企业微信机器人工具 ==========
+
+    #[tool(description = "发送企业微信文本消息")]
+    pub async fn weixin_send_text(&self, Parameters(params): Parameters<WeixinSendTextRequest>) -> String {
+        info!("发送企业微信文本消息: {}", params.content);
+        match self.searcher.weixin() {
+            Some(weixin) => match weixin.send_text(
+                &params.content,
+                params.mentioned_list,
+                params.mentioned_mobile_list,
+            ).await {
+                Ok(result) => result,
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: WeChat client not configured. Please set WEIXIN_WEBHOOK_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "发送企业微信 Markdown 消息")]
+    pub async fn weixin_send_markdown(&self, Parameters(params): Parameters<WeixinSendMarkdownRequest>) -> String {
+        info!("发送企业微信 Markdown 消息");
+        match self.searcher.weixin() {
+            Some(weixin) => match weixin.send_markdown(&params.content).await {
+                Ok(result) => result,
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: WeChat client not configured. Please set WEIXIN_WEBHOOK_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "发送企业微信图片消息")]
+    pub async fn weixin_send_image(&self, Parameters(params): Parameters<WeixinSendImageRequest>) -> String {
+        info!("发送企业微信图片消息: media_id={}", params.media_id);
+        match self.searcher.weixin() {
+            Some(weixin) => match weixin.send_image(&params.media_id).await {
+                Ok(result) => result,
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: WeChat client not configured. Please set WEIXIN_WEBHOOK_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "发送企业微信文件消息")]
+    pub async fn weixin_send_file(&self, Parameters(params): Parameters<WeixinSendFileRequest>) -> String {
+        info!("发送企业微信文件消息: media_id={}", params.media_id);
+        match self.searcher.weixin() {
+            Some(weixin) => match weixin.send_file(&params.media_id).await {
+                Ok(result) => result,
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: WeChat client not configured. Please set WEIXIN_WEBHOOK_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "发送企业微信图文消息")]
+    pub async fn weixin_send_news(&self, Parameters(params): Parameters<WeixinSendNewsRequest>) -> String {
+        info!("发送企业微信图文消息: {} 篇文章", params.articles.len());
+        match self.searcher.weixin() {
+            Some(weixin) => {
+                let articles = params.articles.iter().map(|a| crate::searcher::weixin::Article {
+                    title: a.title.clone(),
+                    description: a.description.clone(),
+                    url: a.url.clone(),
+                    picurl: a.picurl.clone(),
+                }).collect();
+                match weixin.send_news(articles).await {
+                    Ok(result) => result,
+                    Err(e) => format!("Error: {}", e),
+                }
+            },
+            None => "Error: WeChat client not configured. Please set WEIXIN_WEBHOOK_URL environment variable.".to_string(),
+        }
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -1647,7 +1902,7 @@ impl ServerHandler for Tools {
                 ..Default::default()
             },
             instructions: Some(
-                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, and Doris database operations!".into(),
+                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, Doris database operations, WeChat Work (企业微信) webhook notifications, and Kubernetes cluster management!".into(),
             ),
             server_info: Implementation {
                 name: "observability-mcp-server".into(),
