@@ -377,7 +377,10 @@ pub struct KafkaConsumeMessagesRequest {
 // ========== Doris 相关数据结构 ==========
 
 #[derive(Serialize, Deserialize, JsonSchema)]
-pub struct DorisGetDatabasesRequest {}
+pub struct DorisGetDatabasesRequest {
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+}
 
 // ========== Kubernetes 相关数据结构 ==========
 
@@ -423,24 +426,35 @@ pub struct KubeGetConfigRequest {
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetTablesRequest {
-    #[schemars(description = "数据库名称")]
-    pub database: String,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetTableSchemaRequest {
-    #[schemars(description = "数据库名称")]
-    pub database: String,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
     #[schemars(description = "表名称")]
-    pub table: String,
+    #[serde(alias = "table")]
+    pub table_name: String,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetTableMetadataRequest {
-    #[schemars(description = "数据库名称")]
-    pub database: String,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
     #[schemars(description = "表名称")]
-    pub table: String,
+    #[serde(alias = "table")]
+    pub table_name: String,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -462,22 +476,38 @@ pub struct DorisGetLoadJobsRequest {}
 pub struct DorisExecQueryRequest {
     #[schemars(description = "SQL 语句")]
     pub sql: String,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    pub db_name: Option<String>,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+    #[schemars(description = "最大返回行数，默认 100")]
+    pub max_rows: Option<usize>,
+    #[schemars(description = "查询超时时间（秒），默认 30")]
+    pub timeout: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetTableCommentRequest {
-    #[schemars(description = "数据库名称")]
-    pub database: String,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
     #[schemars(description = "表名称")]
-    pub table: String,
+    #[serde(alias = "table")]
+    pub table_name: String,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetTableIndexesRequest {
-    #[schemars(description = "数据库名称")]
-    pub database: String,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
     #[schemars(description = "表名称")]
-    pub table: String,
+    #[serde(alias = "table")]
+    pub table_name: String,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -486,7 +516,215 @@ pub struct DorisGetSqlExplainRequest {
     pub sql: String,
     #[schemars(description = "是否显示详细信息")]
     pub verbose: Option<bool>,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    pub db_name: Option<String>,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetCatalogListRequest {
+    #[schemars(description = "占位参数，可选，仅为兼容官方 MCP 接口")]
+    pub random_string: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetRecentAuditLogsRequest {
+    #[schemars(description = "查询最近多少天的审计日志，默认 7")]
+    pub days: Option<u32>,
+    #[schemars(description = "最大返回条数，默认 100")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetSqlProfileRequest {
+    #[schemars(description = "SQL 语句")]
+    pub sql: String,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    pub db_name: Option<String>,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+    #[schemars(description = "查询超时时间（秒），默认 30")]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetTableDataSizeRequest {
+    #[schemars(description = "数据库名称，可选；不传则查询所有数据库")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
+    #[schemars(description = "表名称，可选；不传则查询数据库下所有表")]
+    #[serde(alias = "table")]
+    pub table_name: Option<String>,
+    #[schemars(description = "是否按单副本统计数据大小，默认 false")]
+    pub single_replica: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetMemoryStatsRequest {
+    #[schemars(description = "返回数据类型：realtime、historical 或 both，默认 realtime")]
+    pub data_type: Option<String>,
+    #[schemars(description = "实时内存统计的 tracker 类型，默认 overview")]
+    pub tracker_type: Option<String>,
+    #[schemars(description = "历史内存统计的 tracker 名称列表，可选")]
+    pub tracker_names: Option<Vec<String>>,
+    #[schemars(description = "历史内存统计时间范围，默认 1h")]
+    pub time_range: Option<String>,
+    #[schemars(description = "是否包含详细信息，默认 true")]
+    pub include_details: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetMonitoringMetricsRequest {
+    #[schemars(description = "返回内容类型：definitions、data 或 both，默认 data")]
+    pub content_type: Option<String>,
+    #[schemars(description = "节点角色：fe、be 或 all，默认 all")]
+    pub role: Option<String>,
+    #[schemars(description = "监控类型：process、jvm、machine 或 all，默认 all")]
+    pub monitor_type: Option<String>,
+    #[schemars(description = "优先级：core、p0 或 all，默认 core")]
+    pub priority: Option<String>,
+    #[schemars(description = "是否包含原始详细指标，默认 false")]
+    pub include_raw_metrics: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetTableBasicInfoRequest {
+    #[schemars(description = "表名称")]
+    #[serde(alias = "table")]
+    pub table_name: String,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisAnalyzeColumnsRequest {
+    #[schemars(description = "表名称")]
+    #[serde(alias = "table")]
+    pub table_name: String,
+    #[schemars(description = "要分析的列名列表")]
+    pub columns: Vec<String>,
+    #[schemars(description = "分析类型：completeness、distribution 或 both")]
+    pub analysis_types: Option<Vec<String>>,
+    #[schemars(description = "最大采样行数，默认 100000")]
+    pub sample_size: Option<usize>,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
+    #[schemars(description = "是否返回更详细的数据，默认 false")]
+    pub detailed_response: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisAnalyzeTableStorageRequest {
+    #[schemars(description = "表名称")]
+    #[serde(alias = "table")]
+    pub table_name: String,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
+    #[schemars(description = "是否返回更详细的数据，默认 false")]
+    pub detailed_response: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisTraceColumnLineageRequest {
+    #[schemars(description = "目标列列表，格式为 table.column 或 db.table.column")]
+    pub target_columns: Vec<String>,
+    #[schemars(description = "分析深度，默认 3")]
+    pub analysis_depth: Option<u32>,
+    #[schemars(description = "是否包含转换规则，默认 true")]
+    pub include_transformations: Option<bool>,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisMonitorDataFreshnessRequest {
+    #[schemars(description = "待监控的表名列表；不传则分析当前库全部表")]
+    pub table_names: Option<Vec<String>>,
+    #[schemars(description = "新鲜度阈值（小时），默认 24")]
+    pub freshness_threshold_hours: Option<u64>,
+    #[schemars(description = "是否包含更新模式分析，默认 true")]
+    pub include_update_patterns: Option<bool>,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisAnalyzeDataAccessPatternsRequest {
+    #[schemars(description = "分析最近多少天，默认 7")]
+    pub days: Option<u32>,
+    #[schemars(description = "是否包含系统用户，默认 false")]
+    pub include_system_users: Option<bool>,
+    #[schemars(description = "用户纳入分析的最小查询次数阈值，默认 5")]
+    pub min_query_threshold: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisAnalyzeDataFlowDependenciesRequest {
+    #[schemars(description = "目标表名；不传则分析全部表")]
+    #[serde(alias = "table")]
+    pub target_table: Option<String>,
+    #[schemars(description = "分析深度，默认 3")]
+    pub analysis_depth: Option<u32>,
+    #[schemars(description = "是否包含视图关系，默认 true")]
+    pub include_views: Option<bool>,
+    #[schemars(description = "Catalog 名称，可选")]
+    pub catalog_name: Option<String>,
+    #[schemars(description = "数据库名称，可选，默认使用 DORIS_DB")]
+    #[serde(alias = "database")]
+    pub db_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisAnalyzeSlowQueriesTopNRequest {
+    #[schemars(description = "分析最近多少天，默认 7")]
+    pub days: Option<u32>,
+    #[schemars(description = "返回最慢查询 Top N，默认 20")]
+    pub top_n: Option<usize>,
+    #[schemars(description = "最小执行耗时阈值（毫秒），默认 1000")]
+    pub min_execution_time_ms: Option<u64>,
+    #[schemars(description = "是否包含 SQL 模式归类，默认 true")]
+    pub include_patterns: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisAnalyzeResourceGrowthCurvesRequest {
+    #[schemars(description = "分析最近多少天，默认 30")]
+    pub days: Option<u32>,
+    #[schemars(description = "资源类型列表，可选值包含 storage、query_volume、user_activity")]
+    pub resource_types: Option<Vec<String>>,
+    #[schemars(description = "是否包含预测结果，默认 false")]
+    pub include_predictions: Option<bool>,
+    #[schemars(description = "是否返回更详细的每日明细，默认 false")]
+    pub detailed_response: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisExecAdbcQueryRequest {
+    #[schemars(description = "SQL 语句")]
+    pub sql: String,
+    #[schemars(description = "最大返回行数；Rust 兼容实现会按当前系统上限裁剪")]
+    pub max_rows: Option<usize>,
+    #[schemars(description = "查询超时时间（秒），默认 60")]
+    pub timeout: Option<u64>,
+    #[schemars(description = "期望返回格式：arrow、pandas 或 dict")]
+    pub return_format: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct DorisGetAdbcConnectionInfoRequest {}
 
 // ========== 企业微信机器人请求结构体 ==========
 
@@ -1489,23 +1727,61 @@ impl Tools {
     // ========== Doris Tools ==========
 
     #[tool(description = "获取 Doris 所有数据库列表")]
-    pub async fn doris_get_databases(&self, _params: Parameters<DorisGetDatabasesRequest>) -> String {
-        info!("获取 Doris 数据库列表");
+    pub async fn doris_get_databases(&self, Parameters(params): Parameters<DorisGetDatabasesRequest>) -> String {
+        info!("获取 Doris 数据库列表: catalog={:?}", params.catalog_name);
         match self.searcher.doris() {
-            Some(doris) => match doris.get_databases().await {
+            Some(doris) => match doris.get_databases_with_options(params.catalog_name.as_deref()).await {
                 Ok(dbs) => serde_json::to_string(&dbs)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
             },
-            None => "Error: Doris client not configured. Please set DORIS_URL environment variable.".to_string(),
+            None => "Error: Doris client not configured. Please set DORIS_HOST, DORIS_USERNAME, DORIS_PASSWORD and DORIS_DB.".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris Catalog 列表")]
+    pub async fn doris_get_catalog_list(&self, _params: Parameters<DorisGetCatalogListRequest>) -> String {
+        info!("获取 Doris Catalog 列表");
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_catalog_list().await {
+                Ok(catalogs) => serde_json::to_string(&catalogs)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris 最近审计日志")]
+    pub async fn doris_get_recent_audit_logs(&self, Parameters(params): Parameters<DorisGetRecentAuditLogsRequest>) -> String {
+        info!(
+            "获取 Doris 最近审计日志: days={:?}, limit={:?}",
+            params.days, params.limit
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .get_recent_audit_logs(params.days, params.limit)
+                .await
+            {
+                Ok(logs) => serde_json::to_string(&logs)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取指定数据库的表列表")]
     pub async fn doris_get_tables(&self, Parameters(params): Parameters<DorisGetTablesRequest>) -> String {
-        info!("获取 Doris 表列表: database={}", params.database);
+        info!(
+            "获取 Doris 表列表: db={:?}, catalog={:?}",
+            params.db_name, params.catalog_name
+        );
         match self.searcher.doris() {
-            Some(doris) => match doris.get_tables(&params.database).await {
+            Some(doris) => match doris
+                .get_tables_with_options(params.db_name.as_deref(), params.catalog_name.as_deref())
+                .await
+            {
                 Ok(tables) => serde_json::to_string(&tables)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1516,9 +1792,19 @@ impl Tools {
 
     #[tool(description = "获取表结构详情")]
     pub async fn doris_get_table_schema(&self, Parameters(params): Parameters<DorisGetTableSchemaRequest>) -> String {
-        info!("获取 Doris 表结构: {}.{}", params.database, params.table);
+        info!(
+            "获取 Doris 表结构: catalog={:?}, db={:?}, table={}",
+            params.catalog_name, params.db_name, params.table_name
+        );
         match self.searcher.doris() {
-            Some(doris) => match doris.get_table_schema(&params.database, &params.table).await {
+            Some(doris) => match doris
+                .get_table_schema_with_options(
+                    params.db_name.as_deref(),
+                    &params.table_name,
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
                 Ok(schema) => serde_json::to_string(&schema)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1529,9 +1815,19 @@ impl Tools {
 
     #[tool(description = "获取表元数据（大小、行数等）")]
     pub async fn doris_get_table_metadata(&self, Parameters(params): Parameters<DorisGetTableMetadataRequest>) -> String {
-        info!("获取 Doris 表元数据: {}.{}", params.database, params.table);
+        info!(
+            "获取 Doris 表元数据: catalog={:?}, db={:?}, table={}",
+            params.catalog_name, params.db_name, params.table_name
+        );
         match self.searcher.doris() {
-            Some(doris) => match doris.get_table_metadata(&params.database, &params.table).await {
+            Some(doris) => match doris
+                .get_table_metadata_with_options(
+                    params.db_name.as_deref(),
+                    &params.table_name,
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
                 Ok(metadata) => serde_json::to_string(&metadata)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1607,9 +1903,21 @@ impl Tools {
 
     #[tool(description = "执行 SQL 查询")]
     pub async fn doris_exec_query(&self, Parameters(params): Parameters<DorisExecQueryRequest>) -> String {
-        info!("执行 Doris SQL 查询: {}", params.sql);
+        info!(
+            "执行 Doris SQL 查询: sql={}, db={:?}, catalog={:?}, max_rows={:?}, timeout={:?}",
+            params.sql, params.db_name, params.catalog_name, params.max_rows, params.timeout
+        );
         match self.searcher.doris() {
-            Some(doris) => match doris.execute_query(&params.sql).await {
+            Some(doris) => match doris
+                .execute_query_with_options(
+                    &params.sql,
+                    params.db_name.as_deref(),
+                    params.catalog_name.as_deref(),
+                    params.max_rows,
+                    params.timeout,
+                )
+                .await
+            {
                 Ok(result) => serde_json::to_string(&result)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1620,36 +1928,22 @@ impl Tools {
 
     #[tool(description = "获取表注释信息")]
     pub async fn doris_get_table_comment(&self, Parameters(params): Parameters<DorisGetTableCommentRequest>) -> String {
-        info!("获取 Doris 表注释: {}.{}", params.database, params.table);
+        info!(
+            "获取 Doris 表注释: catalog={:?}, db={:?}, table={}",
+            params.catalog_name, params.db_name, params.table_name
+        );
         match self.searcher.doris() {
-            Some(doris) => {
-                // Query table comment from information_schema
-                let sql = format!(
-                    "SELECT TABLE_COMMENT FROM information_schema.TABLES
-                     WHERE TABLE_SCHEMA = '{}' AND TABLE_NAME = '{}'",
-                    params.database, params.table
-                );
-                match doris.execute_query(&sql).await {
-                    Ok(result) => {
-                        if let Some(row) = result.data.first() {
-                            let comment = row.get("TABLE_COMMENT")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("");
-                            serde_json::json!({
-                                "database": params.database,
-                                "table": params.table,
-                                "comment": comment
-                            }).to_string()
-                        } else {
-                            serde_json::json!({
-                                "database": params.database,
-                                "table": params.table,
-                                "comment": null
-                            }).to_string()
-                        }
-                    }
-                    Err(e) => format!("Error: {}", e),
-                }
+            Some(doris) => match doris
+                .get_table_comment(
+                    params.db_name.as_deref(),
+                    &params.table_name,
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
+                Ok(comment) => serde_json::to_string(&comment)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
             },
             None => "Error: Doris client not configured".to_string(),
         }
@@ -1657,9 +1951,19 @@ impl Tools {
 
     #[tool(description = "获取表列注释信息")]
     pub async fn doris_get_table_column_comments(&self, Parameters(params): Parameters<DorisGetTableCommentRequest>) -> String {
-        info!("获取 Doris 表列注释: {}.{}", params.database, params.table);
+        info!(
+            "获取 Doris 表列注释: catalog={:?}, db={:?}, table={}",
+            params.catalog_name, params.db_name, params.table_name
+        );
         match self.searcher.doris() {
-            Some(doris) => match doris.get_table_schema(&params.database, &params.table).await {
+            Some(doris) => match doris
+                .get_table_schema_with_options(
+                    params.db_name.as_deref(),
+                    &params.table_name,
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
                 Ok(schema) => {
                     let columns: Vec<serde_json::Value> = schema.columns
                         .into_iter()
@@ -1673,8 +1977,9 @@ impl Tools {
                         .collect();
 
                     serde_json::json!({
-                        "database": params.database,
-                        "table": params.table,
+                        "catalog_name": params.catalog_name,
+                        "database": params.db_name,
+                        "table": params.table_name,
                         "columns": columns
                     }).to_string()
                 }
@@ -1686,18 +1991,22 @@ impl Tools {
 
     #[tool(description = "获取表索引信息")]
     pub async fn doris_get_table_indexes(&self, Parameters(params): Parameters<DorisGetTableIndexesRequest>) -> String {
-        info!("获取 Doris 表索引: {}.{}", params.database, params.table);
+        info!(
+            "获取 Doris 表索引: catalog={:?}, db={:?}, table={}",
+            params.catalog_name, params.db_name, params.table_name
+        );
         match self.searcher.doris() {
-            Some(doris) => {
-                let sql = format!(
-                    "SHOW INDEX FROM `{}`.`{}`",
-                    params.database, params.table
-                );
-                match doris.execute_query(&sql).await {
-                    Ok(result) => serde_json::to_string(&result)
-                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
-                    Err(e) => format!("Error: {}", e),
-                }
+            Some(doris) => match doris
+                .get_table_indexes(
+                    params.db_name.as_deref(),
+                    &params.table_name,
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
             },
             None => "Error: Doris client not configured".to_string(),
         }
@@ -1705,20 +2014,386 @@ impl Tools {
 
     #[tool(description = "获取 SQL 执行计划")]
     pub async fn doris_get_sql_explain(&self, Parameters(params): Parameters<DorisGetSqlExplainRequest>) -> String {
-        info!("获取 Doris SQL 执行计划: {}", params.sql);
+        info!(
+            "获取 Doris SQL 执行计划: sql={}, db={:?}, catalog={:?}, verbose={:?}",
+            params.sql, params.db_name, params.catalog_name, params.verbose
+        );
         match self.searcher.doris() {
-            Some(doris) => {
-                let verbose = params.verbose.unwrap_or(false);
-                let sql = if verbose {
-                    format!("EXPLAIN VERBOSE {}", params.sql)
-                } else {
-                    format!("EXPLAIN {}", params.sql)
-                };
-                match doris.execute_query(&sql).await {
-                    Ok(result) => serde_json::to_string(&result)
-                        .unwrap_or_else(|_| "Failed to serialize".to_string()),
-                    Err(e) => format!("Error: {}", e),
-                }
+            Some(doris) => match doris
+                .get_sql_explain(
+                    &params.sql,
+                    params.verbose.unwrap_or(false),
+                    params.db_name.as_deref(),
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris SQL 执行 Profile")]
+    pub async fn doris_get_sql_profile(&self, Parameters(params): Parameters<DorisGetSqlProfileRequest>) -> String {
+        info!(
+            "获取 Doris SQL Profile: sql={}, db={:?}, catalog={:?}, timeout={:?}",
+            params.sql, params.db_name, params.catalog_name, params.timeout
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .get_sql_profile(
+                    &params.sql,
+                    params.db_name.as_deref(),
+                    params.catalog_name.as_deref(),
+                    params.timeout,
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris 表数据大小信息")]
+    pub async fn doris_get_table_data_size(&self, Parameters(params): Parameters<DorisGetTableDataSizeRequest>) -> String {
+        info!(
+            "获取 Doris 表数据大小: db={:?}, table={:?}, single_replica={:?}",
+            params.db_name, params.table_name, params.single_replica
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .get_table_data_size(
+                    params.db_name.as_deref(),
+                    params.table_name.as_deref(),
+                    params.single_replica.unwrap_or(false),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured. Please set DORIS_HTTP_URL environment variable.".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris 内存统计信息")]
+    pub async fn doris_get_memory_stats(&self, Parameters(params): Parameters<DorisGetMemoryStatsRequest>) -> String {
+        info!(
+            "获取 Doris 内存统计: data_type={:?}, tracker_type={:?}, tracker_names={:?}, time_range={:?}, include_details={:?}",
+            params.data_type, params.tracker_type, params.tracker_names, params.time_range, params.include_details
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .get_memory_stats(
+                    params.data_type.as_deref(),
+                    params.tracker_type.as_deref(),
+                    params.tracker_names.clone(),
+                    params.time_range.as_deref(),
+                    params.include_details.unwrap_or(true),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris 监控指标定义和/或数据")]
+    pub async fn doris_get_monitoring_metrics(&self, Parameters(params): Parameters<DorisGetMonitoringMetricsRequest>) -> String {
+        info!(
+            "获取 Doris 监控指标: content_type={:?}, role={:?}, monitor_type={:?}, priority={:?}, include_raw_metrics={:?}",
+            params.content_type, params.role, params.monitor_type, params.priority, params.include_raw_metrics
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .get_monitoring_metrics(
+                    params.content_type.as_deref(),
+                    params.role.as_deref(),
+                    params.monitor_type.as_deref(),
+                    params.priority.as_deref(),
+                    params.include_raw_metrics.unwrap_or(false),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris 表基础信息")]
+    pub async fn doris_get_table_basic_info(&self, Parameters(params): Parameters<DorisGetTableBasicInfoRequest>) -> String {
+        info!(
+            "获取 Doris 表基础信息: catalog={:?}, db={:?}, table={}",
+            params.catalog_name, params.db_name, params.table_name
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .get_table_basic_info(
+                    params.db_name.as_deref(),
+                    &params.table_name,
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "分析 Doris 指定列的完整性和分布特征")]
+    pub async fn doris_analyze_columns(&self, Parameters(params): Parameters<DorisAnalyzeColumnsRequest>) -> String {
+        info!(
+            "分析 Doris 列: catalog={:?}, db={:?}, table={}, columns={:?}, analysis_types={:?}, sample_size={:?}, detailed_response={:?}",
+            params.catalog_name,
+            params.db_name,
+            params.table_name,
+            params.columns,
+            params.analysis_types,
+            params.sample_size,
+            params.detailed_response
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .analyze_columns(
+                    params.db_name.as_deref(),
+                    &params.table_name,
+                    &params.columns,
+                    params.analysis_types.as_deref(),
+                    params.sample_size,
+                    params.catalog_name.as_deref(),
+                    params.detailed_response.unwrap_or(false),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "分析 Doris 表的物理存储、分桶和分区信息")]
+    pub async fn doris_analyze_table_storage(&self, Parameters(params): Parameters<DorisAnalyzeTableStorageRequest>) -> String {
+        info!(
+            "分析 Doris 表存储: catalog={:?}, db={:?}, table={}, detailed_response={:?}",
+            params.catalog_name, params.db_name, params.table_name, params.detailed_response
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .analyze_table_storage(
+                    params.db_name.as_deref(),
+                    &params.table_name,
+                    params.catalog_name.as_deref(),
+                    params.detailed_response.unwrap_or(false),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "追踪 Doris 列级血缘关系")]
+    pub async fn doris_trace_column_lineage(&self, Parameters(params): Parameters<DorisTraceColumnLineageRequest>) -> String {
+        info!(
+            "追踪 Doris 列血缘: target_columns={:?}, analysis_depth={:?}, include_transformations={:?}, catalog={:?}",
+            params.target_columns, params.analysis_depth, params.include_transformations, params.catalog_name
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .trace_column_lineage(
+                    &params.target_columns,
+                    params.analysis_depth,
+                    params.include_transformations.unwrap_or(true),
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "监控 Doris 表数据新鲜度")]
+    pub async fn doris_monitor_data_freshness(&self, Parameters(params): Parameters<DorisMonitorDataFreshnessRequest>) -> String {
+        info!(
+            "监控 Doris 数据新鲜度: catalog={:?}, db={:?}, table_names={:?}, freshness_threshold_hours={:?}, include_update_patterns={:?}",
+            params.catalog_name,
+            params.db_name,
+            params.table_names,
+            params.freshness_threshold_hours,
+            params.include_update_patterns
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .monitor_data_freshness(
+                    params.db_name.as_deref(),
+                    params.table_names.as_deref(),
+                    params.freshness_threshold_hours.unwrap_or(24),
+                    params.include_update_patterns.unwrap_or(true),
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "分析 Doris 用户数据访问模式和安全风险")]
+    pub async fn doris_analyze_data_access_patterns(&self, Parameters(params): Parameters<DorisAnalyzeDataAccessPatternsRequest>) -> String {
+        info!(
+            "分析 Doris 数据访问模式: days={:?}, include_system_users={:?}, min_query_threshold={:?}",
+            params.days, params.include_system_users, params.min_query_threshold
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .analyze_data_access_patterns(
+                    params.days,
+                    params.include_system_users.unwrap_or(false),
+                    params.min_query_threshold,
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "分析 Doris 表级数据流依赖关系")]
+    pub async fn doris_analyze_data_flow_dependencies(&self, Parameters(params): Parameters<DorisAnalyzeDataFlowDependenciesRequest>) -> String {
+        info!(
+            "分析 Doris 数据流依赖: catalog={:?}, db={:?}, target_table={:?}, analysis_depth={:?}, include_views={:?}",
+            params.catalog_name, params.db_name, params.target_table, params.analysis_depth, params.include_views
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .analyze_data_flow_dependencies(
+                    params.db_name.as_deref(),
+                    params.target_table.as_deref(),
+                    params.analysis_depth,
+                    params.include_views.unwrap_or(true),
+                    params.catalog_name.as_deref(),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "分析 Doris 最慢查询 Top N")]
+    pub async fn doris_analyze_slow_queries_topn(&self, Parameters(params): Parameters<DorisAnalyzeSlowQueriesTopNRequest>) -> String {
+        info!(
+            "分析 Doris 慢查询: days={:?}, top_n={:?}, min_execution_time_ms={:?}, include_patterns={:?}",
+            params.days, params.top_n, params.min_execution_time_ms, params.include_patterns
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .analyze_slow_queries_topn(
+                    params.days,
+                    params.top_n,
+                    params.min_execution_time_ms,
+                    params.include_patterns.unwrap_or(true),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "分析 Doris 资源增长趋势")]
+    pub async fn doris_analyze_resource_growth_curves(&self, Parameters(params): Parameters<DorisAnalyzeResourceGrowthCurvesRequest>) -> String {
+        info!(
+            "分析 Doris 资源增长趋势: days={:?}, resource_types={:?}, include_predictions={:?}, detailed_response={:?}",
+            params.days, params.resource_types, params.include_predictions, params.detailed_response
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .analyze_resource_growth_curves(
+                    params.days,
+                    params.resource_types.as_deref(),
+                    params.include_predictions.unwrap_or(false),
+                    params.detailed_response.unwrap_or(false),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "执行 Doris ADBC 兼容查询（当前 Rust 版本会回退到 MySQL 查询通道）")]
+    pub async fn doris_exec_adbc_query(&self, Parameters(params): Parameters<DorisExecAdbcQueryRequest>) -> String {
+        info!(
+            "执行 Doris ADBC 兼容查询: sql={}, max_rows={:?}, timeout={:?}, return_format={:?}",
+            params.sql, params.max_rows, params.timeout, params.return_format
+        );
+        match self.searcher.doris() {
+            Some(doris) => match doris
+                .exec_adbc_query(
+                    &params.sql,
+                    params.max_rows,
+                    params.timeout,
+                    params.return_format.as_deref(),
+                )
+                .await
+            {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
+            },
+            None => "Error: Doris client not configured".to_string(),
+        }
+    }
+
+    #[tool(description = "获取 Doris ADBC / Arrow Flight SQL 连接诊断信息")]
+    pub async fn doris_get_adbc_connection_info(&self, _params: Parameters<DorisGetAdbcConnectionInfoRequest>) -> String {
+        info!("获取 Doris ADBC 连接诊断信息");
+        match self.searcher.doris() {
+            Some(doris) => match doris.get_adbc_connection_info().await {
+                Ok(result) => serde_json::to_string(&result)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string()),
+                Err(e) => format!("Error: {}", e),
             },
             None => "Error: Doris client not configured".to_string(),
         }
