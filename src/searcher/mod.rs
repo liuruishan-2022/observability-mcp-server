@@ -1,4 +1,5 @@
 use std::env::var;
+use std::error::Error as StdError;
 use thiserror::Error;
 
 pub mod atlassian;
@@ -24,7 +25,7 @@ use weixin::WeixinClient;
 #[derive(Error, Debug)]
 pub enum SearcherError {
     /// HTTP 请求错误
-    #[error("HTTP request failed: {0}")]
+    #[error("HTTP request failed: {}", format_reqwest_error(.0))]
     RequestError(#[from] reqwest::Error),
 
     /// JSON 反序列化错误
@@ -50,6 +51,48 @@ pub enum SearcherError {
     /// 其他错误
     #[error("Unknown error: {0}")]
     Other(String),
+}
+
+fn format_reqwest_error(error: &reqwest::Error) -> String {
+    let mut details = vec![error.to_string()];
+
+    if let Some(url) = error.url() {
+        details.push(format!("url={url}"));
+    }
+    if let Some(status) = error.status() {
+        details.push(format!("status={status}"));
+    }
+    if error.is_timeout() {
+        details.push("kind=timeout".to_string());
+    }
+    if error.is_connect() {
+        details.push("kind=connect".to_string());
+    }
+    if error.is_request() {
+        details.push("kind=request".to_string());
+    }
+    if error.is_body() {
+        details.push("kind=body".to_string());
+    }
+    if error.is_decode() {
+        details.push("kind=decode".to_string());
+    }
+
+    let mut sources = Vec::new();
+    let mut source = StdError::source(error);
+    while let Some(current) = source {
+        let message = current.to_string();
+        if !message.is_empty() {
+            sources.push(message);
+        }
+        source = current.source();
+    }
+
+    if !sources.is_empty() {
+        details.push(format!("causes={}", sources.join(" -> ")));
+    }
+
+    details.join(" | ")
 }
 
 /// 从环境变量构建 Searcher 实例

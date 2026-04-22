@@ -13,6 +13,7 @@ use std::{
     cmp::Reverse,
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
+    time::Duration,
 };
 use tokio::fs;
 
@@ -54,6 +55,8 @@ pub fn build_http_client(auth: AtlassianAuth, ssl_verify: bool) -> Result<Client
 
     Client::builder()
         .danger_accept_invalid_certs(!ssl_verify)
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(30))
         .default_headers(headers)
         .build()
         .map_err(SearcherError::RequestError)
