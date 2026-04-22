@@ -1,11 +1,11 @@
+use crate::searcher::SearcherError;
+use k8s_openapi::api::core::v1::{Event, Namespace, Pod};
 use kube::{
+    Client as KubeClient,
     api::{Api, ListParams},
     config::Kubeconfig,
-    Client as KubeClient,
 };
-use k8s_openapi::api::core::v1::{Event, Namespace, Pod};
 use serde::{Deserialize, Serialize};
-use crate::searcher::SearcherError;
 
 /// Kubernetes API 客户端
 pub struct KubernetesClient {
@@ -32,24 +32,22 @@ impl KubernetesClient {
             .map(|h| h.join(".kube").join("config"))
             .ok_or_else(|| SearcherError::Other("Cannot find home directory".to_string()))?;
 
-        let config_path = config_file.to_str()
+        let config_path = config_file
+            .to_str()
             .ok_or_else(|| SearcherError::Other("Invalid config path".to_string()))?;
 
         let kubeconfig = Kubeconfig::read_from(config_path)
             .map_err(|e| SearcherError::Other(format!("Failed to read kubeconfig: {}", e)))?;
 
-        let contexts = kubeconfig.contexts
+        let contexts = kubeconfig
+            .contexts
             .into_iter()
             .map(|ctx| {
                 let context = ctx.context.as_ref();
                 KubeContext {
                     name: ctx.name.clone(),
-                    cluster: context
-                        .map(|c| c.cluster.clone())
-                        .unwrap_or_default(),
-                    user: context
-                        .and_then(|c| c.user.clone())
-                        .unwrap_or_default(),
+                    cluster: context.map(|c| c.cluster.clone()).unwrap_or_default(),
+                    user: context.and_then(|c| c.user.clone()).unwrap_or_default(),
                 }
             })
             .collect();
@@ -63,7 +61,8 @@ impl KubernetesClient {
             .map(|h| h.join(".kube").join("config"))
             .ok_or_else(|| SearcherError::Other("Cannot find home directory".to_string()))?;
 
-        let config_path = config_file.to_str()
+        let config_path = config_file
+            .to_str()
             .ok_or_else(|| SearcherError::Other("Invalid config path".to_string()))?;
 
         let kubeconfig = Kubeconfig::read_from(config_path)
@@ -71,7 +70,9 @@ impl KubernetesClient {
 
         if minified {
             if let Some(current_ctx) = &kubeconfig.current_context {
-                let current_context = kubeconfig.contexts.iter()
+                let current_context = kubeconfig
+                    .contexts
+                    .iter()
                     .find(|c| &c.name == current_ctx)
                     .map(|c| serde_json::to_value(&c).ok());
 
@@ -101,7 +102,9 @@ impl KubernetesClient {
             Api::all(self.client.clone())
         };
 
-        let pod_list = api.list(&ListParams::default()).await
+        let pod_list = api
+            .list(&ListParams::default())
+            .await
             .map_err(|e| SearcherError::Other(format!("Failed to list pods: {}", e)))?;
 
         Ok(KubePodList {
@@ -116,17 +119,24 @@ impl KubernetesClient {
             .map(|ns| Api::namespaced(self.client.clone(), ns))
             .unwrap_or_else(|| Api::default_namespaced(self.client.clone()));
 
-        api.get(name).await
+        api.get(name)
+            .await
             .map_err(|e| SearcherError::Other(format!("Failed to get pod: {}", e)))
     }
 
     /// 删除 Pod
-    pub async fn delete_pod(&self, name: &str, namespace: Option<&str>) -> Result<String, SearcherError> {
+    pub async fn delete_pod(
+        &self,
+        name: &str,
+        namespace: Option<&str>,
+    ) -> Result<String, SearcherError> {
         let api: Api<Pod> = namespace
             .map(|ns| Api::namespaced(self.client.clone(), ns))
             .unwrap_or_else(|| Api::default_namespaced(self.client.clone()));
 
-        let result = api.delete(name, &Default::default()).await
+        let result = api
+            .delete(name, &Default::default())
+            .await
             .map_err(|e| SearcherError::Other(format!("Failed to delete pod: {}", e)))?;
 
         // Return the deletion status as JSON string
@@ -137,7 +147,9 @@ impl KubernetesClient {
     /// 列出命名空间
     pub async fn list_namespaces(&self) -> Result<KubeNamespaceList, SearcherError> {
         let api: Api<Namespace> = Api::all(self.client.clone());
-        let ns_list = api.list(&ListParams::default()).await
+        let ns_list = api
+            .list(&ListParams::default())
+            .await
             .map_err(|e| SearcherError::Other(format!("Failed to list namespaces: {}", e)))?;
 
         Ok(KubeNamespaceList {
@@ -147,14 +159,19 @@ impl KubernetesClient {
     }
 
     /// 列出事件
-    pub async fn list_events(&self, namespace: Option<&str>) -> Result<KubeEventList, SearcherError> {
+    pub async fn list_events(
+        &self,
+        namespace: Option<&str>,
+    ) -> Result<KubeEventList, SearcherError> {
         let api: Api<Event> = if let Some(ns) = namespace {
             Api::namespaced(self.client.clone(), ns)
         } else {
             Api::all(self.client.clone())
         };
 
-        let event_list = api.list(&ListParams::default()).await
+        let event_list = api
+            .list(&ListParams::default())
+            .await
             .map_err(|e| SearcherError::Other(format!("Failed to list events: {}", e)))?;
 
         Ok(KubeEventList {

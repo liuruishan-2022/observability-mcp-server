@@ -726,6 +726,763 @@ pub struct DorisExecAdbcQueryRequest {
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct DorisGetAdbcConnectionInfoRequest {}
 
+// ========== Jira 相关数据结构 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetIssueRequest {
+    #[schemars(description = "Jira issue key，例如 PROJ-123")]
+    pub issue_key: String,
+    #[schemars(description = "返回字段列表，例如 [\"summary\", \"status\", \"assignee\"]")]
+    pub fields: Option<Vec<String>>,
+    #[schemars(description = "扩展字段，例如 renderedFields,transitions,changelog")]
+    pub expand: Option<String>,
+    #[schemars(description = "返回评论的最大数量")]
+    pub comment_limit: Option<usize>,
+    #[schemars(description = "Issue properties 列表")]
+    pub properties: Option<Vec<String>>,
+    #[schemars(description = "是否更新浏览历史")]
+    pub update_history: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraSearchRequest {
+    #[schemars(description = "JQL 查询语句")]
+    pub jql: String,
+    #[schemars(description = "返回字段列表")]
+    pub fields: Option<Vec<String>>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "起始偏移")]
+    pub start_at: Option<usize>,
+    #[schemars(description = "项目过滤器，逗号分隔，例如 DEV,OPS")]
+    pub projects_filter: Option<String>,
+    #[schemars(description = "扩展字段")]
+    pub expand: Option<String>,
+    #[schemars(description = "分页 token，主要用于 Cloud")]
+    pub page_token: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraSearchFieldsRequest {
+    #[schemars(description = "字段搜索关键字")]
+    pub keyword: Option<String>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetFieldOptionsRequest {
+    #[schemars(description = "字段 ID，例如 customfield_10001")]
+    pub field_id: String,
+    #[schemars(description = "字段上下文 ID，Cloud 可选")]
+    pub context_id: Option<String>,
+    #[schemars(description = "项目 key，Server/DC 获取字段选项时需要")]
+    pub project_key: Option<String>,
+    #[schemars(description = "Issue type，Server/DC 获取字段选项时需要")]
+    pub issue_type: Option<String>,
+    #[schemars(description = "按选项值模糊过滤")]
+    pub contains: Option<String>,
+    #[schemars(description = "最大返回数量")]
+    pub return_limit: Option<usize>,
+    #[schemars(description = "是否仅返回 value 字符串")]
+    pub values_only: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetProjectIssuesRequest {
+    #[schemars(description = "项目 key")]
+    pub project_key: String,
+    #[schemars(description = "返回字段列表")]
+    pub fields: Option<Vec<String>>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "起始偏移")]
+    pub start_at: Option<usize>,
+    #[schemars(description = "扩展字段")]
+    pub expand: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetTransitionsRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetWorklogRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetProjectVersionsRequest {
+    #[schemars(description = "项目 key")]
+    pub project_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetProjectComponentsRequest {
+    #[schemars(description = "项目 key")]
+    pub project_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetAllProjectsRequest {
+    #[schemars(description = "是否包含归档项目")]
+    pub include_archived: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetUserProfileRequest {
+    #[schemars(description = "用户标识，例如邮箱、display name、accountId")]
+    pub user_identifier: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetIssueWatchersRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraAddWatcherRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "用户标识，Cloud 推荐 accountId，Server/DC 推荐用户名")]
+    pub user_identifier: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraRemoveWatcherRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "用户名，Server/DC 推荐使用")]
+    pub username: Option<String>,
+    #[schemars(description = "accountId，Cloud 推荐使用")]
+    pub account_id: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraCreateIssueRequest {
+    #[schemars(description = "项目 key")]
+    pub project_key: String,
+    #[schemars(description = "标题")]
+    pub summary: String,
+    #[schemars(description = "Issue 类型，例如 Task、Bug、Story")]
+    pub issue_type: String,
+    #[schemars(description = "指派人")]
+    pub assignee: Option<String>,
+    #[schemars(description = "Issue 描述")]
+    pub description: Option<String>,
+    #[schemars(description = "组件列表")]
+    pub components: Option<Vec<String>>,
+    #[schemars(description = "其他字段，必须是 JSON 对象")]
+    pub additional_fields: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraUpdateIssueRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "待更新字段，必须是 JSON 对象")]
+    pub fields: Option<serde_json::Value>,
+    #[schemars(description = "附加更新字段，必须是 JSON 对象")]
+    pub additional_fields: Option<serde_json::Value>,
+    #[schemars(description = "组件列表")]
+    pub components: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraDeleteIssueRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraAddCommentRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "评论内容")]
+    pub comment: String,
+    #[schemars(description = "评论可见性对象，例如 {\"type\":\"group\",\"value\":\"jira-users\"}")]
+    pub visibility: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraAddWorklogRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "耗时，例如 1h30m、2h、45m")]
+    pub time_spent: String,
+    #[schemars(description = "Worklog 评论")]
+    pub comment: Option<String>,
+    #[schemars(description = "开始时间，ISO8601 格式")]
+    pub started: Option<String>,
+    #[schemars(description = "新的 original estimate")]
+    pub original_estimate: Option<String>,
+    #[schemars(description = "新的 remaining estimate")]
+    pub remaining_estimate: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraTransitionIssueRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "Transition ID")]
+    pub transition_id: String,
+    #[schemars(description = "过渡时附带更新的字段，必须是 JSON 对象")]
+    pub fields: Option<serde_json::Value>,
+    #[schemars(description = "过渡时附带评论")]
+    pub comment: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetLinkTypesRequest {}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraDownloadAttachmentsRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetIssueImagesRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetAgileBoardsRequest {
+    #[schemars(description = "Board 名称过滤")]
+    pub board_name: Option<String>,
+    #[schemars(description = "项目 key 过滤")]
+    pub project_key: Option<String>,
+    #[schemars(description = "Board 类型过滤，如 scrum/kanban")]
+    pub board_type: Option<String>,
+    #[schemars(description = "分页起始位置")]
+    pub start_at: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetBoardIssuesRequest {
+    #[schemars(description = "Board ID")]
+    pub board_id: String,
+    #[schemars(description = "JQL 过滤条件")]
+    pub jql: String,
+    #[schemars(description = "返回字段列表")]
+    pub fields: Option<Vec<String>>,
+    #[schemars(description = "分页起始位置")]
+    pub start_at: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "expand 参数")]
+    pub expand: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetSprintsFromBoardRequest {
+    #[schemars(description = "Board ID")]
+    pub board_id: String,
+    #[schemars(description = "Sprint 状态过滤")]
+    pub state: Option<String>,
+    #[schemars(description = "分页起始位置")]
+    pub start_at: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetSprintIssuesRequest {
+    #[schemars(description = "Sprint ID")]
+    pub sprint_id: String,
+    #[schemars(description = "返回字段列表")]
+    pub fields: Option<Vec<String>>,
+    #[schemars(description = "分页起始位置")]
+    pub start_at: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraBatchCreateIssuesRequest {
+    #[schemars(description = "批量创建 issue 的参数对象列表")]
+    pub issues: Vec<serde_json::Value>,
+    #[schemars(description = "是否仅校验，不真正创建")]
+    pub validate_only: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraBatchGetChangelogsRequest {
+    #[schemars(description = "Issue ID 或 key 列表")]
+    pub issue_ids_or_keys: Vec<String>,
+    #[schemars(description = "字段 ID 过滤列表")]
+    pub fields: Option<Vec<String>>,
+    #[schemars(description = "每个 issue 返回的最大 changelog 数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraEditCommentRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "评论 ID")]
+    pub comment_id: String,
+    #[schemars(description = "新的评论内容")]
+    pub body: String,
+    #[schemars(description = "评论可见性对象")]
+    pub visibility: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraLinkToEpicRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "Epic issue key")]
+    pub epic_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraCreateIssueLinkRequest {
+    #[schemars(description = "Link 类型名称")]
+    pub link_type: String,
+    #[schemars(description = "Inward issue key")]
+    pub inward_issue_key: String,
+    #[schemars(description = "Outward issue key")]
+    pub outward_issue_key: String,
+    #[schemars(description = "可选评论")]
+    pub comment: Option<String>,
+    #[schemars(description = "评论可见性对象")]
+    pub comment_visibility: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraCreateRemoteIssueLinkRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "远程链接 URL")]
+    pub url: String,
+    #[schemars(description = "远程链接标题")]
+    pub title: String,
+    #[schemars(description = "远程链接摘要")]
+    pub summary: Option<String>,
+    #[schemars(description = "关系描述")]
+    pub relationship: Option<String>,
+    #[schemars(description = "图标 URL")]
+    pub icon_url: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraRemoveIssueLinkRequest {
+    #[schemars(description = "Issue link ID")]
+    pub link_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraCreateSprintRequest {
+    #[schemars(description = "Board ID")]
+    pub board_id: String,
+    #[schemars(description = "Sprint 名称")]
+    pub name: String,
+    #[schemars(description = "开始时间")]
+    pub start_date: String,
+    #[schemars(description = "结束时间")]
+    pub end_date: String,
+    #[schemars(description = "Sprint 目标")]
+    pub goal: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraUpdateSprintRequest {
+    #[schemars(description = "Sprint ID")]
+    pub sprint_id: String,
+    #[schemars(description = "Sprint 名称")]
+    pub name: Option<String>,
+    #[schemars(description = "Sprint 状态")]
+    pub state: Option<String>,
+    #[schemars(description = "开始时间")]
+    pub start_date: Option<String>,
+    #[schemars(description = "结束时间")]
+    pub end_date: Option<String>,
+    #[schemars(description = "Sprint 目标")]
+    pub goal: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraAddIssuesToSprintRequest {
+    #[schemars(description = "Sprint ID")]
+    pub sprint_id: String,
+    #[schemars(description = "Issue key 列表")]
+    pub issue_keys: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetServiceDeskForProjectRequest {
+    #[schemars(description = "项目 key")]
+    pub project_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetServiceDeskQueuesRequest {
+    #[schemars(description = "Service desk ID")]
+    pub service_desk_id: String,
+    #[schemars(description = "分页起始位置")]
+    pub start_at: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetQueueIssuesRequest {
+    #[schemars(description = "Service desk ID")]
+    pub service_desk_id: String,
+    #[schemars(description = "Queue ID")]
+    pub queue_id: String,
+    #[schemars(description = "分页起始位置")]
+    pub start_at: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraCreateVersionRequest {
+    #[schemars(description = "项目 key")]
+    pub project_key: String,
+    #[schemars(description = "版本名称")]
+    pub name: String,
+    #[schemars(description = "开始日期")]
+    pub start_date: Option<String>,
+    #[schemars(description = "发布日期")]
+    pub release_date: Option<String>,
+    #[schemars(description = "版本描述")]
+    pub description: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraBatchCreateVersionsRequest {
+    #[schemars(description = "项目 key")]
+    pub project_key: String,
+    #[schemars(description = "版本对象列表")]
+    pub versions: Vec<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetIssueProformaFormsRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetProformaFormDetailsRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "表单 ID")]
+    pub form_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraUpdateProformaFormAnswersRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "表单 ID")]
+    pub form_id: String,
+    #[schemars(description = "答案对象列表")]
+    pub answers: Vec<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetIssueDatesRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "是否包含状态变更历史")]
+    pub include_status_changes: Option<bool>,
+    #[schemars(description = "是否包含状态停留时间汇总")]
+    pub include_status_summary: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetIssueSlaRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "要计算的 SLA 指标列表")]
+    pub metrics: Option<Vec<String>>,
+    #[schemars(description = "是否只按工作时间计算")]
+    pub working_hours_only: Option<bool>,
+    #[schemars(description = "是否包含原始日期数据")]
+    pub include_raw_dates: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetIssueDevelopmentInfoRequest {
+    #[schemars(description = "Jira issue key")]
+    pub issue_key: String,
+    #[schemars(description = "应用类型过滤")]
+    pub application_type: Option<String>,
+    #[schemars(description = "数据类型过滤")]
+    pub data_type: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct JiraGetIssuesDevelopmentInfoRequest {
+    #[schemars(description = "Jira issue key 列表")]
+    pub issue_keys: Vec<String>,
+    #[schemars(description = "应用类型过滤")]
+    pub application_type: Option<String>,
+    #[schemars(description = "数据类型过滤")]
+    pub data_type: Option<String>,
+}
+
+// ========== Confluence 相关数据结构 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceSearchRequest {
+    #[schemars(description = "搜索查询，可传简单词条或 CQL")]
+    pub query: String,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "空间过滤器，逗号分隔，例如 DEV,DOC")]
+    pub spaces_filter: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetPageRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: Option<String>,
+    #[schemars(description = "页面标题")]
+    pub title: Option<String>,
+    #[schemars(description = "空间 key")]
+    pub space_key: Option<String>,
+    #[schemars(description = "是否包含元数据")]
+    pub include_metadata: Option<bool>,
+    #[schemars(description = "是否将内容转换为更易读的文本")]
+    pub convert_to_markdown: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetPageChildrenRequest {
+    #[schemars(description = "父页面 ID")]
+    pub parent_id: String,
+    #[schemars(description = "expand 参数")]
+    pub expand: Option<String>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "是否包含子页面内容")]
+    pub include_content: Option<bool>,
+    #[schemars(description = "是否将内容转换为更易读的文本")]
+    pub convert_to_markdown: Option<bool>,
+    #[schemars(description = "起始偏移")]
+    pub start: Option<usize>,
+    #[schemars(description = "是否包含文件夹占位参数")]
+    pub include_folders: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetCommentsRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetLabelsRequest {
+    #[schemars(description = "页面或内容 ID")]
+    pub page_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceAddLabelRequest {
+    #[schemars(description = "页面或内容 ID")]
+    pub page_id: String,
+    #[schemars(description = "标签名称")]
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceCreatePageRequest {
+    #[schemars(description = "空间 key")]
+    pub space_key: String,
+    #[schemars(description = "页面标题")]
+    pub title: String,
+    #[schemars(description = "页面内容")]
+    pub content: String,
+    #[schemars(description = "父页面 ID")]
+    pub parent_id: Option<String>,
+    #[schemars(description = "内容格式，可选 markdown/wiki/storage")]
+    pub content_format: Option<String>,
+    #[schemars(description = "是否启用标题锚点")]
+    pub enable_heading_anchors: Option<bool>,
+    #[schemars(description = "是否在响应中包含页面内容")]
+    pub include_content: Option<bool>,
+    #[schemars(description = "页面 emoji，占位参数")]
+    pub emoji: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceUpdatePageRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: String,
+    #[schemars(description = "页面标题")]
+    pub title: String,
+    #[schemars(description = "页面内容")]
+    pub content: String,
+    #[schemars(description = "是否 minor edit")]
+    pub is_minor_edit: Option<bool>,
+    #[schemars(description = "版本备注")]
+    pub version_comment: Option<String>,
+    #[schemars(description = "新父页面 ID")]
+    pub parent_id: Option<String>,
+    #[schemars(description = "内容格式，可选 markdown/wiki/storage")]
+    pub content_format: Option<String>,
+    #[schemars(description = "是否启用标题锚点")]
+    pub enable_heading_anchors: Option<bool>,
+    #[schemars(description = "是否在响应中包含页面内容")]
+    pub include_content: Option<bool>,
+    #[schemars(description = "页面 emoji，占位参数")]
+    pub emoji: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceDeletePageRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceAddCommentRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: String,
+    #[schemars(description = "评论内容")]
+    pub body: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceReplyToCommentRequest {
+    #[schemars(description = "评论 ID")]
+    pub comment_id: String,
+    #[schemars(description = "回复内容")]
+    pub body: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceSearchUserRequest {
+    #[schemars(description = "用户搜索关键字")]
+    pub query: String,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "Server/DC group 名称")]
+    pub group_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetPageHistoryRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: String,
+    #[schemars(description = "版本号")]
+    pub version: u32,
+    #[schemars(description = "是否将内容转换为更易读的文本")]
+    pub convert_to_markdown: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetPageViewsRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: String,
+    #[schemars(description = "是否包含标题")]
+    pub include_title: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetSpacePageTreeRequest {
+    #[schemars(description = "空间 key")]
+    pub space_key: String,
+    #[schemars(description = "最大抓取页面数")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceMovePageRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: String,
+    #[schemars(description = "目标父页面 ID")]
+    pub target_parent_id: Option<String>,
+    #[schemars(description = "目标空间 key")]
+    pub target_space_key: Option<String>,
+    #[schemars(description = "位置：append/above/below")]
+    pub position: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetPageDiffRequest {
+    #[schemars(description = "页面 ID")]
+    pub page_id: String,
+    #[schemars(description = "起始版本号")]
+    pub from_version: u32,
+    #[schemars(description = "目标版本号")]
+    pub to_version: u32,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceUploadAttachmentRequest {
+    #[schemars(description = "内容 ID")]
+    pub content_id: String,
+    #[schemars(description = "文件路径")]
+    pub file_path: String,
+    #[schemars(description = "附件备注")]
+    pub comment: Option<String>,
+    #[schemars(description = "是否 minor edit")]
+    pub minor_edit: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceUploadAttachmentsRequest {
+    #[schemars(description = "内容 ID")]
+    pub content_id: String,
+    #[schemars(description = "文件路径列表")]
+    pub file_paths: Vec<String>,
+    #[schemars(description = "附件备注")]
+    pub comment: Option<String>,
+    #[schemars(description = "是否 minor edit")]
+    pub minor_edit: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetAttachmentsRequest {
+    #[schemars(description = "内容 ID")]
+    pub content_id: String,
+    #[schemars(description = "起始偏移")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "按文件名精确过滤")]
+    pub filename: Option<String>,
+    #[schemars(description = "按 MIME 类型过滤")]
+    pub media_type: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceDownloadAttachmentRequest {
+    #[schemars(description = "附件 ID")]
+    pub attachment_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceDownloadContentAttachmentsRequest {
+    #[schemars(description = "内容 ID")]
+    pub content_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceDeleteAttachmentRequest {
+    #[schemars(description = "附件 ID")]
+    pub attachment_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ConfluenceGetPageImagesRequest {
+    #[schemars(description = "内容 ID")]
+    pub content_id: String,
+}
+
 // ========== 企业微信机器人请求结构体 ==========
 
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -793,6 +1550,25 @@ impl Tools {
     pub fn with_docs_loader(mut self, docs_loader: SharedDocsLoader) -> Self {
         self.docs_loader = docs_loader;
         self
+    }
+
+    fn serialize_value<T: Serialize>(value: T) -> String {
+        serde_json::to_string(&value).unwrap_or_else(|_| "Failed to serialize".to_string())
+    }
+
+    fn serialize_result<T: Serialize>(result: Result<T, crate::searcher::SearcherError>) -> String {
+        match result {
+            Ok(value) => Self::serialize_value(value),
+            Err(error) => format!("Error: {}", error),
+        }
+    }
+
+    fn jira_not_configured() -> String {
+        "Error: Jira client not configured. Please set JIRA_URL and either JIRA_PERSONAL_TOKEN or JIRA_USERNAME/JIRA_API_TOKEN.".to_string()
+    }
+
+    fn confluence_not_configured() -> String {
+        "Error: Confluence client not configured. Please set CONFLUENCE_URL and either CONFLUENCE_PERSONAL_TOKEN or CONFLUENCE_USERNAME/CONFLUENCE_API_TOKEN.".to_string()
     }
 
     #[tool(description = "获取当前服务的版本号")]
@@ -1233,7 +2009,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Harbor 指定项目的信息")]
-    pub async fn harbor_get_project(&self, Parameters(params): Parameters<HarborGetProjectRequest>) -> String {
+    pub async fn harbor_get_project(
+        &self,
+        Parameters(params): Parameters<HarborGetProjectRequest>,
+    ) -> String {
         info!("获取 Harbor 项目: {}", params.project_id_or_name);
         match self.searcher.harbor() {
             Some(harbor) => match harbor.get_project(&params.project_id_or_name).await {
@@ -1246,7 +2025,10 @@ impl Tools {
     }
 
     #[tool(description = "创建 Harbor 项目")]
-    pub async fn harbor_create_project(&self, Parameters(params): Parameters<HarborCreateProjectRequest>) -> String {
+    pub async fn harbor_create_project(
+        &self,
+        Parameters(params): Parameters<HarborCreateProjectRequest>,
+    ) -> String {
         info!("创建 Harbor 项目: {}", params.project_name);
         match self.searcher.harbor() {
             Some(harbor) => {
@@ -1261,13 +2043,16 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Harbor client not configured".to_string(),
         }
     }
 
     #[tool(description = "删除 Harbor 项目")]
-    pub async fn harbor_delete_project(&self, Parameters(params): Parameters<HarborDeleteProjectRequest>) -> String {
+    pub async fn harbor_delete_project(
+        &self,
+        Parameters(params): Parameters<HarborDeleteProjectRequest>,
+    ) -> String {
         info!("删除 Harbor 项目: {}", params.project_id_or_name);
         match self.searcher.harbor() {
             Some(harbor) => match harbor.delete_project(&params.project_id_or_name).await {
@@ -1282,8 +2067,14 @@ impl Tools {
     }
 
     #[tool(description = "获取项目的仓库列表")]
-    pub async fn harbor_get_repositories(&self, Parameters(params): Parameters<HarborGetRepositoriesRequest>) -> String {
-        info!("获取 Harbor 仓库列表: project={}", params.project_id_or_name);
+    pub async fn harbor_get_repositories(
+        &self,
+        Parameters(params): Parameters<HarborGetRepositoriesRequest>,
+    ) -> String {
+        info!(
+            "获取 Harbor 仓库列表: project={}",
+            params.project_id_or_name
+        );
         match self.searcher.harbor() {
             Some(harbor) => match harbor.get_repositories(&params.project_id_or_name).await {
                 Ok(repositories) => serde_json::to_string(&repositories)
@@ -1295,8 +2086,14 @@ impl Tools {
     }
 
     #[tool(description = "删除仓库")]
-    pub async fn harbor_delete_repository(&self, Parameters(params): Parameters<HarborDeleteRepositoryRequest>) -> String {
-        info!("删除 Harbor 仓库: project={}, repo={}", params.project_id_or_name, params.repository_name);
+    pub async fn harbor_delete_repository(
+        &self,
+        Parameters(params): Parameters<HarborDeleteRepositoryRequest>,
+    ) -> String {
+        info!(
+            "删除 Harbor 仓库: project={}, repo={}",
+            params.project_id_or_name, params.repository_name
+        );
         match self.searcher.harbor() {
             Some(harbor) => match harbor.delete_repository(&params.project_id_or_name, &params.repository_name).await {
                 Ok(()) => serde_json::json!({
@@ -1310,10 +2107,19 @@ impl Tools {
     }
 
     #[tool(description = "获取仓库的 artifacts (镜像标签) 列表")]
-    pub async fn harbor_get_artifacts(&self, Parameters(params): Parameters<HarborGetArtifactsRequest>) -> String {
-        info!("获取 Harbor artifacts: project={}, repo={}", params.project_id_or_name, params.repository_name);
+    pub async fn harbor_get_artifacts(
+        &self,
+        Parameters(params): Parameters<HarborGetArtifactsRequest>,
+    ) -> String {
+        info!(
+            "获取 Harbor artifacts: project={}, repo={}",
+            params.project_id_or_name, params.repository_name
+        );
         match self.searcher.harbor() {
-            Some(harbor) => match harbor.get_artifacts(&params.project_id_or_name, &params.repository_name).await {
+            Some(harbor) => match harbor
+                .get_artifacts(&params.project_id_or_name, &params.repository_name)
+                .await
+            {
                 Ok(artifacts) => serde_json::to_string(&artifacts)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1323,20 +2129,29 @@ impl Tools {
     }
 
     #[tool(description = "删除 artifact (镜像标签)")]
-    pub async fn harbor_delete_artifact(&self, Parameters(params): Parameters<HarborDeleteArtifactRequest>) -> String {
-        info!("删除 Harbor artifact: project={}, repo={}, digest={}",
-            params.project_id_or_name, params.repository_name, params.digest);
+    pub async fn harbor_delete_artifact(
+        &self,
+        Parameters(params): Parameters<HarborDeleteArtifactRequest>,
+    ) -> String {
+        info!(
+            "删除 Harbor artifact: project={}, repo={}, digest={}",
+            params.project_id_or_name, params.repository_name, params.digest
+        );
         match self.searcher.harbor() {
-            Some(harbor) => match harbor.delete_artifact(
-                &params.project_id_or_name,
-                &params.repository_name,
-                &params.digest
-            ).await {
+            Some(harbor) => match harbor
+                .delete_artifact(
+                    &params.project_id_or_name,
+                    &params.repository_name,
+                    &params.digest,
+                )
+                .await
+            {
                 Ok(()) => serde_json::json!({
                     "status": "success",
                     "message": format!("Artifact '{}/{}@{}' deleted successfully",
                         params.project_id_or_name, params.repository_name, params.digest)
-                }).to_string(),
+                })
+                .to_string(),
                 Err(e) => format!("Error: {}", e),
             },
             None => "Error: Harbor client not configured".to_string(),
@@ -1344,8 +2159,14 @@ impl Tools {
     }
 
     #[tool(description = "获取项目的 Helm Charts 列表")]
-    pub async fn harbor_get_helm_charts(&self, Parameters(params): Parameters<HarborGetHelmChartsRequest>) -> String {
-        info!("获取 Harbor Helm Charts: project={}", params.project_id_or_name);
+    pub async fn harbor_get_helm_charts(
+        &self,
+        Parameters(params): Parameters<HarborGetHelmChartsRequest>,
+    ) -> String {
+        info!(
+            "获取 Harbor Helm Charts: project={}",
+            params.project_id_or_name
+        );
         match self.searcher.harbor() {
             Some(harbor) => match harbor.get_helm_charts(&params.project_id_or_name).await {
                 Ok(charts) => serde_json::to_string(&charts)
@@ -1357,14 +2178,19 @@ impl Tools {
     }
 
     #[tool(description = "获取 Helm Chart 的版本列表")]
-    pub async fn harbor_get_helm_chart_versions(&self, Parameters(params): Parameters<HarborGetHelmChartVersionsRequest>) -> String {
-        info!("获取 Harbor Helm Chart 版本: project={}, chart={}",
-            params.project_id_or_name, params.chart_name);
+    pub async fn harbor_get_helm_chart_versions(
+        &self,
+        Parameters(params): Parameters<HarborGetHelmChartVersionsRequest>,
+    ) -> String {
+        info!(
+            "获取 Harbor Helm Chart 版本: project={}, chart={}",
+            params.project_id_or_name, params.chart_name
+        );
         match self.searcher.harbor() {
-            Some(harbor) => match harbor.get_helm_chart_versions(
-                &params.project_id_or_name,
-                &params.chart_name
-            ).await {
+            Some(harbor) => match harbor
+                .get_helm_chart_versions(&params.project_id_or_name, &params.chart_name)
+                .await
+            {
                 Ok(versions) => serde_json::to_string(&versions)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1374,20 +2200,29 @@ impl Tools {
     }
 
     #[tool(description = "删除 Helm Chart 版本")]
-    pub async fn harbor_delete_helm_chart_version(&self, Parameters(params): Parameters<HarborDeleteHelmChartVersionRequest>) -> String {
-        info!("删除 Harbor Helm Chart 版本: project={}, chart={}, version={}",
-            params.project_id_or_name, params.chart_name, params.version);
+    pub async fn harbor_delete_helm_chart_version(
+        &self,
+        Parameters(params): Parameters<HarborDeleteHelmChartVersionRequest>,
+    ) -> String {
+        info!(
+            "删除 Harbor Helm Chart 版本: project={}, chart={}, version={}",
+            params.project_id_or_name, params.chart_name, params.version
+        );
         match self.searcher.harbor() {
-            Some(harbor) => match harbor.delete_helm_chart_version(
-                &params.project_id_or_name,
-                &params.chart_name,
-                &params.version
-            ).await {
+            Some(harbor) => match harbor
+                .delete_helm_chart_version(
+                    &params.project_id_or_name,
+                    &params.chart_name,
+                    &params.version,
+                )
+                .await
+            {
                 Ok(()) => serde_json::json!({
                     "status": "success",
                     "message": format!("Helm Chart '{}/{}:{}' deleted successfully",
                         params.project_id_or_name, params.chart_name, params.version)
-                }).to_string(),
+                })
+                .to_string(),
                 Err(e) => format!("Error: {}", e),
             },
             None => "Error: Harbor client not configured".to_string(),
@@ -1397,7 +2232,10 @@ impl Tools {
     // ========== Nacos Tools ==========
 
     #[tool(description = "获取 Nacos 所有命名空间列表")]
-    pub async fn nacos_list_namespaces(&self, _params: Parameters<NacosListNamespacesRequest>) -> String {
+    pub async fn nacos_list_namespaces(
+        &self,
+        _params: Parameters<NacosListNamespacesRequest>,
+    ) -> String {
         info!("获取 Nacos 命名空间列表");
         match self.searcher.nacos() {
             Some(nacos) => match nacos.list_namespaces().await {
@@ -1405,12 +2243,18 @@ impl Tools {
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
             },
-            None => "Error: Nacos client not configured. Please set NACOS_URL environment variable.".to_string(),
+            None => {
+                "Error: Nacos client not configured. Please set NACOS_URL environment variable."
+                    .to_string()
+            }
         }
     }
 
     #[tool(description = "获取 Nacos 服务列表")]
-    pub async fn nacos_list_services(&self, Parameters(params): Parameters<NacosListServicesRequest>) -> String {
+    pub async fn nacos_list_services(
+        &self,
+        Parameters(params): Parameters<NacosListServicesRequest>,
+    ) -> String {
         info!("获取 Nacos 服务列表: namespace={:?}", params.namespace_id);
         match self.searcher.nacos() {
             Some(nacos) => {
@@ -1429,13 +2273,16 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取 Nacos 指定服务的详情")]
-    pub async fn nacos_get_service(&self, Parameters(params): Parameters<NacosGetServiceRequest>) -> String {
+    pub async fn nacos_get_service(
+        &self,
+        Parameters(params): Parameters<NacosGetServiceRequest>,
+    ) -> String {
         info!("获取 Nacos 服务详情: service={}", params.service_name);
         match self.searcher.nacos() {
             Some(nacos) => {
@@ -1450,13 +2297,16 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取 Nacos 服务实例列表")]
-    pub async fn nacos_list_instances(&self, Parameters(params): Parameters<NacosListInstancesRequest>) -> String {
+    pub async fn nacos_list_instances(
+        &self,
+        Parameters(params): Parameters<NacosListInstancesRequest>,
+    ) -> String {
         info!("获取 Nacos 服务实例: service={}", params.service_name);
         match self.searcher.nacos() {
             Some(nacos) => {
@@ -1472,13 +2322,16 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取 Nacos 服务订阅者列表")]
-    pub async fn nacos_list_service_subscribers(&self, Parameters(params): Parameters<NacosListServiceSubscribersRequest>) -> String {
+    pub async fn nacos_list_service_subscribers(
+        &self,
+        Parameters(params): Parameters<NacosListServiceSubscribersRequest>,
+    ) -> String {
         info!("获取 Nacos 服务订阅者: service={}", params.service_name);
         match self.searcher.nacos() {
             Some(nacos) => {
@@ -1496,13 +2349,16 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取 Nacos 配置列表")]
-    pub async fn nacos_list_configs(&self, Parameters(params): Parameters<NacosListConfigsRequest>) -> String {
+    pub async fn nacos_list_configs(
+        &self,
+        Parameters(params): Parameters<NacosListConfigsRequest>,
+    ) -> String {
         info!("获取 Nacos 配置列表");
         match self.searcher.nacos() {
             Some(nacos) => {
@@ -1523,14 +2379,20 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取 Nacos 配置详情")]
-    pub async fn nacos_get_config(&self, Parameters(params): Parameters<NacosGetConfigRequest>) -> String {
-        info!("获取 Nacos 配置详情: dataId={}, group={}", params.data_id, params.group_name);
+    pub async fn nacos_get_config(
+        &self,
+        Parameters(params): Parameters<NacosGetConfigRequest>,
+    ) -> String {
+        info!(
+            "获取 Nacos 配置详情: dataId={}, group={}",
+            params.data_id, params.group_name
+        );
         match self.searcher.nacos() {
             Some(nacos) => {
                 use crate::searcher::nacos::GetConfigParams;
@@ -1544,14 +2406,20 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取 Nacos 配置历史列表")]
-    pub async fn nacos_list_config_history(&self, Parameters(params): Parameters<NacosListConfigHistoryRequest>) -> String {
-        info!("获取 Nacos 配置历史: dataId={}, group={}", params.data_id, params.group_name);
+    pub async fn nacos_list_config_history(
+        &self,
+        Parameters(params): Parameters<NacosListConfigHistoryRequest>,
+    ) -> String {
+        info!(
+            "获取 Nacos 配置历史: dataId={}, group={}",
+            params.data_id, params.group_name
+        );
         match self.searcher.nacos() {
             Some(nacos) => {
                 use crate::searcher::nacos::ListConfigHistoryParams;
@@ -1567,14 +2435,20 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取 Nacos 配置历史详情")]
-    pub async fn nacos_get_config_history(&self, Parameters(params): Parameters<NacosGetConfigHistoryRequest>) -> String {
-        info!("获取 Nacos 配置历史详情: dataId={}, group={}, nid={:?}", params.data_id, params.group_name, params.nid);
+    pub async fn nacos_get_config_history(
+        &self,
+        Parameters(params): Parameters<NacosGetConfigHistoryRequest>,
+    ) -> String {
+        info!(
+            "获取 Nacos 配置历史详情: dataId={}, group={}, nid={:?}",
+            params.data_id, params.group_name, params.nid
+        );
         match self.searcher.nacos() {
             Some(nacos) => {
                 use crate::searcher::nacos::GetConfigHistoryParams;
@@ -1589,14 +2463,20 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取 Nacos 配置监听器列表")]
-    pub async fn nacos_list_config_listeners(&self, Parameters(params): Parameters<NacosListConfigListenersRequest>) -> String {
-        info!("获取 Nacos 配置监听器: dataId={}, group={}", params.data_id, params.group_name);
+    pub async fn nacos_list_config_listeners(
+        &self,
+        Parameters(params): Parameters<NacosListConfigListenersRequest>,
+    ) -> String {
+        info!(
+            "获取 Nacos 配置监听器: dataId={}, group={}",
+            params.data_id, params.group_name
+        );
         match self.searcher.nacos() {
             Some(nacos) => {
                 use crate::searcher::nacos::ListConfigListenersParams;
@@ -1611,13 +2491,16 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
 
     #[tool(description = "获取客户端监听的 Nacos 配置列表")]
-    pub async fn nacos_list_listened_configs(&self, Parameters(params): Parameters<NacosListListenedConfigsRequest>) -> String {
+    pub async fn nacos_list_listened_configs(
+        &self,
+        Parameters(params): Parameters<NacosListListenedConfigsRequest>,
+    ) -> String {
         info!("获取客户端监听的 Nacos 配置: ip={}", params.ip);
         match self.searcher.nacos() {
             Some(nacos) => {
@@ -1632,7 +2515,7 @@ impl Tools {
                         .unwrap_or_else(|_| "Failed to serialize".to_string()),
                     Err(e) => format!("Error: {}", e),
                 }
-            },
+            }
             None => "Error: Nacos client not configured".to_string(),
         }
     }
@@ -1640,7 +2523,10 @@ impl Tools {
     // ========== Kafka Tools ==========
 
     #[tool(description = "创建 Kafka 主题")]
-    pub async fn kafka_create_topic(&self, Parameters(params): Parameters<KafkaCreateTopicRequest>) -> String {
+    pub async fn kafka_create_topic(
+        &self,
+        Parameters(params): Parameters<KafkaCreateTopicRequest>,
+    ) -> String {
         info!("创建 Kafka 主题: {}", params.topic);
         match self.searcher.kafka() {
             Some(kafka) => {
@@ -1669,7 +2555,10 @@ impl Tools {
     }
 
     #[tool(description = "删除 Kafka 主题")]
-    pub async fn kafka_delete_topic(&self, Parameters(params): Parameters<KafkaDeleteTopicRequest>) -> String {
+    pub async fn kafka_delete_topic(
+        &self,
+        Parameters(params): Parameters<KafkaDeleteTopicRequest>,
+    ) -> String {
         info!("删除 Kafka 主题: {}", params.topic);
         match self.searcher.kafka() {
             Some(kafka) => match kafka.delete_topic(&params.topic).await {
@@ -1681,7 +2570,10 @@ impl Tools {
     }
 
     #[tool(description = "描述 Kafka 主题详情")]
-    pub async fn kafka_describe_topic(&self, Parameters(params): Parameters<KafkaDescribeTopicRequest>) -> String {
+    pub async fn kafka_describe_topic(
+        &self,
+        Parameters(params): Parameters<KafkaDescribeTopicRequest>,
+    ) -> String {
         info!("描述 Kafka 主题: {}", params.topic);
         match self.searcher.kafka() {
             Some(kafka) => match kafka.describe_topic(&params.topic).await {
@@ -1694,15 +2586,21 @@ impl Tools {
     }
 
     #[tool(description = "生产消息到 Kafka 主题")]
-    pub async fn kafka_produce_message(&self, Parameters(params): Parameters<KafkaProduceMessageRequest>) -> String {
+    pub async fn kafka_produce_message(
+        &self,
+        Parameters(params): Parameters<KafkaProduceMessageRequest>,
+    ) -> String {
         info!("生产消息到 Kafka 主题: {}", params.topic);
         match self.searcher.kafka() {
-            Some(kafka) => match kafka.produce_message(
-                &params.topic,
-                params.key.clone(),
-                &params.value,
-                params.headers.clone(),
-            ).await {
+            Some(kafka) => match kafka
+                .produce_message(
+                    &params.topic,
+                    params.key.clone(),
+                    &params.value,
+                    params.headers.clone(),
+                )
+                .await
+            {
                 Ok(result) => serde_json::to_string(&result)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1712,10 +2610,16 @@ impl Tools {
     }
 
     #[tool(description = "从 Kafka 主题消费消息")]
-    pub async fn kafka_consume_messages(&self, Parameters(params): Parameters<KafkaConsumeMessagesRequest>) -> String {
+    pub async fn kafka_consume_messages(
+        &self,
+        Parameters(params): Parameters<KafkaConsumeMessagesRequest>,
+    ) -> String {
         info!("从 Kafka 主题消费���息: {}", params.topic);
         match self.searcher.kafka() {
-            Some(kafka) => match kafka.consume_messages(&params.topic, params.timeout_seconds).await {
+            Some(kafka) => match kafka
+                .consume_messages(&params.topic, params.timeout_seconds)
+                .await
+            {
                 Ok(messages) => serde_json::to_string(&messages)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1727,7 +2631,10 @@ impl Tools {
     // ========== Doris Tools ==========
 
     #[tool(description = "获取 Doris 所有数据库列表")]
-    pub async fn doris_get_databases(&self, Parameters(params): Parameters<DorisGetDatabasesRequest>) -> String {
+    pub async fn doris_get_databases(
+        &self,
+        Parameters(params): Parameters<DorisGetDatabasesRequest>,
+    ) -> String {
         info!("获取 Doris 数据库列表: catalog={:?}", params.catalog_name);
         match self.searcher.doris() {
             Some(doris) => match doris.get_databases_with_options(params.catalog_name.as_deref()).await {
@@ -1740,7 +2647,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris Catalog 列表")]
-    pub async fn doris_get_catalog_list(&self, _params: Parameters<DorisGetCatalogListRequest>) -> String {
+    pub async fn doris_get_catalog_list(
+        &self,
+        _params: Parameters<DorisGetCatalogListRequest>,
+    ) -> String {
         info!("获取 Doris Catalog 列表");
         match self.searcher.doris() {
             Some(doris) => match doris.get_catalog_list().await {
@@ -1753,16 +2663,16 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris 最近审计日志")]
-    pub async fn doris_get_recent_audit_logs(&self, Parameters(params): Parameters<DorisGetRecentAuditLogsRequest>) -> String {
+    pub async fn doris_get_recent_audit_logs(
+        &self,
+        Parameters(params): Parameters<DorisGetRecentAuditLogsRequest>,
+    ) -> String {
         info!(
             "获取 Doris 最近审计日志: days={:?}, limit={:?}",
             params.days, params.limit
         );
         match self.searcher.doris() {
-            Some(doris) => match doris
-                .get_recent_audit_logs(params.days, params.limit)
-                .await
-            {
+            Some(doris) => match doris.get_recent_audit_logs(params.days, params.limit).await {
                 Ok(logs) => serde_json::to_string(&logs)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -1772,7 +2682,10 @@ impl Tools {
     }
 
     #[tool(description = "获取指定数据库的表列表")]
-    pub async fn doris_get_tables(&self, Parameters(params): Parameters<DorisGetTablesRequest>) -> String {
+    pub async fn doris_get_tables(
+        &self,
+        Parameters(params): Parameters<DorisGetTablesRequest>,
+    ) -> String {
         info!(
             "获取 Doris 表列表: db={:?}, catalog={:?}",
             params.db_name, params.catalog_name
@@ -1791,7 +2704,10 @@ impl Tools {
     }
 
     #[tool(description = "获取表结构详情")]
-    pub async fn doris_get_table_schema(&self, Parameters(params): Parameters<DorisGetTableSchemaRequest>) -> String {
+    pub async fn doris_get_table_schema(
+        &self,
+        Parameters(params): Parameters<DorisGetTableSchemaRequest>,
+    ) -> String {
         info!(
             "获取 Doris 表结构: catalog={:?}, db={:?}, table={}",
             params.catalog_name, params.db_name, params.table_name
@@ -1814,7 +2730,10 @@ impl Tools {
     }
 
     #[tool(description = "获取表元数据（大小、行数等）")]
-    pub async fn doris_get_table_metadata(&self, Parameters(params): Parameters<DorisGetTableMetadataRequest>) -> String {
+    pub async fn doris_get_table_metadata(
+        &self,
+        Parameters(params): Parameters<DorisGetTableMetadataRequest>,
+    ) -> String {
         info!(
             "获取 Doris 表元数据: catalog={:?}, db={:?}, table={}",
             params.catalog_name, params.db_name, params.table_name
@@ -1837,7 +2756,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris FE (Frontend) 节点状态")]
-    pub async fn doris_get_fe_status(&self, _params: Parameters<DorisGetFeStatusRequest>) -> String {
+    pub async fn doris_get_fe_status(
+        &self,
+        _params: Parameters<DorisGetFeStatusRequest>,
+    ) -> String {
         info!("获取 Doris FE 节点状态");
         match self.searcher.doris() {
             Some(doris) => match doris.get_fe_status().await {
@@ -1850,7 +2772,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris BE (Backend) 节点状态")]
-    pub async fn doris_get_be_status(&self, _params: Parameters<DorisGetBeStatusRequest>) -> String {
+    pub async fn doris_get_be_status(
+        &self,
+        _params: Parameters<DorisGetBeStatusRequest>,
+    ) -> String {
         info!("获取 Doris BE 节点状态");
         match self.searcher.doris() {
             Some(doris) => match doris.get_be_status().await {
@@ -1863,7 +2788,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris 查询统计信息")]
-    pub async fn doris_get_query_stats(&self, _params: Parameters<DorisGetQueryStatsRequest>) -> String {
+    pub async fn doris_get_query_stats(
+        &self,
+        _params: Parameters<DorisGetQueryStatsRequest>,
+    ) -> String {
         info!("获取 Doris 查询统计");
         match self.searcher.doris() {
             Some(doris) => match doris.get_query_stats().await {
@@ -1876,7 +2804,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris Routine Load 任务列表")]
-    pub async fn doris_get_routine_loads(&self, _params: Parameters<DorisGetRoutineLoadsRequest>) -> String {
+    pub async fn doris_get_routine_loads(
+        &self,
+        _params: Parameters<DorisGetRoutineLoadsRequest>,
+    ) -> String {
         info!("获取 Doris Routine Load 任务列表");
         match self.searcher.doris() {
             Some(doris) => match doris.get_routine_loads().await {
@@ -1889,7 +2820,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris Load 任务列表")]
-    pub async fn doris_get_load_jobs(&self, _params: Parameters<DorisGetLoadJobsRequest>) -> String {
+    pub async fn doris_get_load_jobs(
+        &self,
+        _params: Parameters<DorisGetLoadJobsRequest>,
+    ) -> String {
         info!("获取 Doris Load 任���列表");
         match self.searcher.doris() {
             Some(doris) => match doris.get_load_jobs().await {
@@ -1902,7 +2836,10 @@ impl Tools {
     }
 
     #[tool(description = "执行 SQL 查询")]
-    pub async fn doris_exec_query(&self, Parameters(params): Parameters<DorisExecQueryRequest>) -> String {
+    pub async fn doris_exec_query(
+        &self,
+        Parameters(params): Parameters<DorisExecQueryRequest>,
+    ) -> String {
         info!(
             "执行 Doris SQL 查询: sql={}, db={:?}, catalog={:?}, max_rows={:?}, timeout={:?}",
             params.sql, params.db_name, params.catalog_name, params.max_rows, params.timeout
@@ -1927,7 +2864,10 @@ impl Tools {
     }
 
     #[tool(description = "获取表注释信息")]
-    pub async fn doris_get_table_comment(&self, Parameters(params): Parameters<DorisGetTableCommentRequest>) -> String {
+    pub async fn doris_get_table_comment(
+        &self,
+        Parameters(params): Parameters<DorisGetTableCommentRequest>,
+    ) -> String {
         info!(
             "获取 Doris 表注释: catalog={:?}, db={:?}, table={}",
             params.catalog_name, params.db_name, params.table_name
@@ -1950,7 +2890,10 @@ impl Tools {
     }
 
     #[tool(description = "获取表列注释信息")]
-    pub async fn doris_get_table_column_comments(&self, Parameters(params): Parameters<DorisGetTableCommentRequest>) -> String {
+    pub async fn doris_get_table_column_comments(
+        &self,
+        Parameters(params): Parameters<DorisGetTableCommentRequest>,
+    ) -> String {
         info!(
             "获取 Doris 表列注释: catalog={:?}, db={:?}, table={}",
             params.catalog_name, params.db_name, params.table_name
@@ -1965,7 +2908,8 @@ impl Tools {
                 .await
             {
                 Ok(schema) => {
-                    let columns: Vec<serde_json::Value> = schema.columns
+                    let columns: Vec<serde_json::Value> = schema
+                        .columns
                         .into_iter()
                         .map(|col| {
                             serde_json::json!({
@@ -1981,7 +2925,8 @@ impl Tools {
                         "database": params.db_name,
                         "table": params.table_name,
                         "columns": columns
-                    }).to_string()
+                    })
+                    .to_string()
                 }
                 Err(e) => format!("Error: {}", e),
             },
@@ -1990,7 +2935,10 @@ impl Tools {
     }
 
     #[tool(description = "获取表索引信息")]
-    pub async fn doris_get_table_indexes(&self, Parameters(params): Parameters<DorisGetTableIndexesRequest>) -> String {
+    pub async fn doris_get_table_indexes(
+        &self,
+        Parameters(params): Parameters<DorisGetTableIndexesRequest>,
+    ) -> String {
         info!(
             "获取 Doris 表索引: catalog={:?}, db={:?}, table={}",
             params.catalog_name, params.db_name, params.table_name
@@ -2013,7 +2961,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 SQL 执行计划")]
-    pub async fn doris_get_sql_explain(&self, Parameters(params): Parameters<DorisGetSqlExplainRequest>) -> String {
+    pub async fn doris_get_sql_explain(
+        &self,
+        Parameters(params): Parameters<DorisGetSqlExplainRequest>,
+    ) -> String {
         info!(
             "获取 Doris SQL 执行计划: sql={}, db={:?}, catalog={:?}, verbose={:?}",
             params.sql, params.db_name, params.catalog_name, params.verbose
@@ -2037,7 +2988,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris SQL 执行 Profile")]
-    pub async fn doris_get_sql_profile(&self, Parameters(params): Parameters<DorisGetSqlProfileRequest>) -> String {
+    pub async fn doris_get_sql_profile(
+        &self,
+        Parameters(params): Parameters<DorisGetSqlProfileRequest>,
+    ) -> String {
         info!(
             "获取 Doris SQL Profile: sql={}, db={:?}, catalog={:?}, timeout={:?}",
             params.sql, params.db_name, params.catalog_name, params.timeout
@@ -2061,7 +3015,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris 表数据大小信息")]
-    pub async fn doris_get_table_data_size(&self, Parameters(params): Parameters<DorisGetTableDataSizeRequest>) -> String {
+    pub async fn doris_get_table_data_size(
+        &self,
+        Parameters(params): Parameters<DorisGetTableDataSizeRequest>,
+    ) -> String {
         info!(
             "获取 Doris 表数据大小: db={:?}, table={:?}, single_replica={:?}",
             params.db_name, params.table_name, params.single_replica
@@ -2084,10 +3041,17 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris 内存统计信息")]
-    pub async fn doris_get_memory_stats(&self, Parameters(params): Parameters<DorisGetMemoryStatsRequest>) -> String {
+    pub async fn doris_get_memory_stats(
+        &self,
+        Parameters(params): Parameters<DorisGetMemoryStatsRequest>,
+    ) -> String {
         info!(
             "获取 Doris 内存统计: data_type={:?}, tracker_type={:?}, tracker_names={:?}, time_range={:?}, include_details={:?}",
-            params.data_type, params.tracker_type, params.tracker_names, params.time_range, params.include_details
+            params.data_type,
+            params.tracker_type,
+            params.tracker_names,
+            params.time_range,
+            params.include_details
         );
         match self.searcher.doris() {
             Some(doris) => match doris
@@ -2109,10 +3073,17 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris 监控指标定义和/或数据")]
-    pub async fn doris_get_monitoring_metrics(&self, Parameters(params): Parameters<DorisGetMonitoringMetricsRequest>) -> String {
+    pub async fn doris_get_monitoring_metrics(
+        &self,
+        Parameters(params): Parameters<DorisGetMonitoringMetricsRequest>,
+    ) -> String {
         info!(
             "获取 Doris 监控指标: content_type={:?}, role={:?}, monitor_type={:?}, priority={:?}, include_raw_metrics={:?}",
-            params.content_type, params.role, params.monitor_type, params.priority, params.include_raw_metrics
+            params.content_type,
+            params.role,
+            params.monitor_type,
+            params.priority,
+            params.include_raw_metrics
         );
         match self.searcher.doris() {
             Some(doris) => match doris
@@ -2134,7 +3105,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris 表基础信息")]
-    pub async fn doris_get_table_basic_info(&self, Parameters(params): Parameters<DorisGetTableBasicInfoRequest>) -> String {
+    pub async fn doris_get_table_basic_info(
+        &self,
+        Parameters(params): Parameters<DorisGetTableBasicInfoRequest>,
+    ) -> String {
         info!(
             "获取 Doris 表基础信息: catalog={:?}, db={:?}, table={}",
             params.catalog_name, params.db_name, params.table_name
@@ -2157,7 +3131,10 @@ impl Tools {
     }
 
     #[tool(description = "分析 Doris 指定列的完整性和分布特征")]
-    pub async fn doris_analyze_columns(&self, Parameters(params): Parameters<DorisAnalyzeColumnsRequest>) -> String {
+    pub async fn doris_analyze_columns(
+        &self,
+        Parameters(params): Parameters<DorisAnalyzeColumnsRequest>,
+    ) -> String {
         info!(
             "分析 Doris 列: catalog={:?}, db={:?}, table={}, columns={:?}, analysis_types={:?}, sample_size={:?}, detailed_response={:?}",
             params.catalog_name,
@@ -2190,7 +3167,10 @@ impl Tools {
     }
 
     #[tool(description = "分析 Doris 表的物理存储、分桶和分区信息")]
-    pub async fn doris_analyze_table_storage(&self, Parameters(params): Parameters<DorisAnalyzeTableStorageRequest>) -> String {
+    pub async fn doris_analyze_table_storage(
+        &self,
+        Parameters(params): Parameters<DorisAnalyzeTableStorageRequest>,
+    ) -> String {
         info!(
             "分析 Doris 表存储: catalog={:?}, db={:?}, table={}, detailed_response={:?}",
             params.catalog_name, params.db_name, params.table_name, params.detailed_response
@@ -2214,10 +3194,16 @@ impl Tools {
     }
 
     #[tool(description = "追踪 Doris 列级血缘关系")]
-    pub async fn doris_trace_column_lineage(&self, Parameters(params): Parameters<DorisTraceColumnLineageRequest>) -> String {
+    pub async fn doris_trace_column_lineage(
+        &self,
+        Parameters(params): Parameters<DorisTraceColumnLineageRequest>,
+    ) -> String {
         info!(
             "追踪 Doris 列血缘: target_columns={:?}, analysis_depth={:?}, include_transformations={:?}, catalog={:?}",
-            params.target_columns, params.analysis_depth, params.include_transformations, params.catalog_name
+            params.target_columns,
+            params.analysis_depth,
+            params.include_transformations,
+            params.catalog_name
         );
         match self.searcher.doris() {
             Some(doris) => match doris
@@ -2238,7 +3224,10 @@ impl Tools {
     }
 
     #[tool(description = "监控 Doris 表数据新鲜度")]
-    pub async fn doris_monitor_data_freshness(&self, Parameters(params): Parameters<DorisMonitorDataFreshnessRequest>) -> String {
+    pub async fn doris_monitor_data_freshness(
+        &self,
+        Parameters(params): Parameters<DorisMonitorDataFreshnessRequest>,
+    ) -> String {
         info!(
             "监控 Doris 数据新鲜度: catalog={:?}, db={:?}, table_names={:?}, freshness_threshold_hours={:?}, include_update_patterns={:?}",
             params.catalog_name,
@@ -2267,7 +3256,10 @@ impl Tools {
     }
 
     #[tool(description = "分析 Doris 用户数据访问模式和安全风险")]
-    pub async fn doris_analyze_data_access_patterns(&self, Parameters(params): Parameters<DorisAnalyzeDataAccessPatternsRequest>) -> String {
+    pub async fn doris_analyze_data_access_patterns(
+        &self,
+        Parameters(params): Parameters<DorisAnalyzeDataAccessPatternsRequest>,
+    ) -> String {
         info!(
             "分析 Doris 数据访问模式: days={:?}, include_system_users={:?}, min_query_threshold={:?}",
             params.days, params.include_system_users, params.min_query_threshold
@@ -2290,10 +3282,17 @@ impl Tools {
     }
 
     #[tool(description = "分析 Doris 表级数据流依赖关系")]
-    pub async fn doris_analyze_data_flow_dependencies(&self, Parameters(params): Parameters<DorisAnalyzeDataFlowDependenciesRequest>) -> String {
+    pub async fn doris_analyze_data_flow_dependencies(
+        &self,
+        Parameters(params): Parameters<DorisAnalyzeDataFlowDependenciesRequest>,
+    ) -> String {
         info!(
             "分析 Doris 数据流依赖: catalog={:?}, db={:?}, target_table={:?}, analysis_depth={:?}, include_views={:?}",
-            params.catalog_name, params.db_name, params.target_table, params.analysis_depth, params.include_views
+            params.catalog_name,
+            params.db_name,
+            params.target_table,
+            params.analysis_depth,
+            params.include_views
         );
         match self.searcher.doris() {
             Some(doris) => match doris
@@ -2315,7 +3314,10 @@ impl Tools {
     }
 
     #[tool(description = "分析 Doris 最慢查询 Top N")]
-    pub async fn doris_analyze_slow_queries_topn(&self, Parameters(params): Parameters<DorisAnalyzeSlowQueriesTopNRequest>) -> String {
+    pub async fn doris_analyze_slow_queries_topn(
+        &self,
+        Parameters(params): Parameters<DorisAnalyzeSlowQueriesTopNRequest>,
+    ) -> String {
         info!(
             "分析 Doris 慢查询: days={:?}, top_n={:?}, min_execution_time_ms={:?}, include_patterns={:?}",
             params.days, params.top_n, params.min_execution_time_ms, params.include_patterns
@@ -2339,10 +3341,16 @@ impl Tools {
     }
 
     #[tool(description = "分析 Doris 资源增长趋势")]
-    pub async fn doris_analyze_resource_growth_curves(&self, Parameters(params): Parameters<DorisAnalyzeResourceGrowthCurvesRequest>) -> String {
+    pub async fn doris_analyze_resource_growth_curves(
+        &self,
+        Parameters(params): Parameters<DorisAnalyzeResourceGrowthCurvesRequest>,
+    ) -> String {
         info!(
             "分析 Doris 资源增长趋势: days={:?}, resource_types={:?}, include_predictions={:?}, detailed_response={:?}",
-            params.days, params.resource_types, params.include_predictions, params.detailed_response
+            params.days,
+            params.resource_types,
+            params.include_predictions,
+            params.detailed_response
         );
         match self.searcher.doris() {
             Some(doris) => match doris
@@ -2363,7 +3371,10 @@ impl Tools {
     }
 
     #[tool(description = "执行 Doris ADBC 兼容查询（当前 Rust 版本会回退到 MySQL 查询通道）")]
-    pub async fn doris_exec_adbc_query(&self, Parameters(params): Parameters<DorisExecAdbcQueryRequest>) -> String {
+    pub async fn doris_exec_adbc_query(
+        &self,
+        Parameters(params): Parameters<DorisExecAdbcQueryRequest>,
+    ) -> String {
         info!(
             "执行 Doris ADBC 兼容查询: sql={}, max_rows={:?}, timeout={:?}, return_format={:?}",
             params.sql, params.max_rows, params.timeout, params.return_format
@@ -2387,7 +3398,10 @@ impl Tools {
     }
 
     #[tool(description = "获取 Doris ADBC / Arrow Flight SQL 连接诊断信息")]
-    pub async fn doris_get_adbc_connection_info(&self, _params: Parameters<DorisGetAdbcConnectionInfoRequest>) -> String {
+    pub async fn doris_get_adbc_connection_info(
+        &self,
+        _params: Parameters<DorisGetAdbcConnectionInfoRequest>,
+    ) -> String {
         info!("获取 Doris ADBC 连接诊断信息");
         match self.searcher.doris() {
             Some(doris) => match doris.get_adbc_connection_info().await {
@@ -2399,10 +3413,1345 @@ impl Tools {
         }
     }
 
+    // ========== Jira Tools ==========
+
+    #[tool(description = "获取 Jira issue 详情")]
+    pub async fn jira_get_issue(
+        &self,
+        Parameters(params): Parameters<JiraGetIssueRequest>,
+    ) -> String {
+        info!("获取 Jira issue: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_issue(
+                    &params.issue_key,
+                    params.fields.as_deref(),
+                    params.expand.as_deref(),
+                    params.comment_limit,
+                    params.properties.as_deref(),
+                    params.update_history,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "使用 JQL 搜索 Jira issues")]
+    pub async fn jira_search(&self, Parameters(params): Parameters<JiraSearchRequest>) -> String {
+        info!("搜索 Jira issues: {}", params.jql);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.search_issues(
+                    &params.jql,
+                    params.fields.as_deref(),
+                    params.start_at,
+                    params.limit,
+                    params.projects_filter.as_deref(),
+                    params.expand.as_deref(),
+                    params.page_token.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "搜索 Jira 字段定义")]
+    pub async fn jira_search_fields(
+        &self,
+        Parameters(params): Parameters<JiraSearchFieldsRequest>,
+    ) -> String {
+        info!("搜索 Jira 字段: {:?}", params.keyword);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.search_fields(params.keyword.as_deref(), params.limit)
+                    .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira 字段允许的选项值")]
+    pub async fn jira_get_field_options(
+        &self,
+        Parameters(params): Parameters<JiraGetFieldOptionsRequest>,
+    ) -> String {
+        info!("获取 Jira 字段选项: {}", params.field_id);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_field_options(
+                    &params.field_id,
+                    params.context_id.as_deref(),
+                    params.project_key.as_deref(),
+                    params.issue_type.as_deref(),
+                    params.contains.as_deref(),
+                    params.return_limit,
+                    params.values_only,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取指定 Jira 项目的 issues")]
+    pub async fn jira_get_project_issues(
+        &self,
+        Parameters(params): Parameters<JiraGetProjectIssuesRequest>,
+    ) -> String {
+        info!("获取 Jira 项目 issues: {}", params.project_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_project_issues(
+                    &params.project_key,
+                    params.fields.as_deref(),
+                    params.start_at,
+                    params.limit,
+                    params.expand.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira issue 可用状态流转")]
+    pub async fn jira_get_transitions(
+        &self,
+        Parameters(params): Parameters<JiraGetTransitionsRequest>,
+    ) -> String {
+        info!("获取 Jira transitions: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(jira.get_transitions(&params.issue_key).await),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira issue worklog")]
+    pub async fn jira_get_worklog(
+        &self,
+        Parameters(params): Parameters<JiraGetWorklogRequest>,
+    ) -> String {
+        info!("获取 Jira worklog: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(jira.get_worklog(&params.issue_key).await),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira 项目版本列表")]
+    pub async fn jira_get_project_versions(
+        &self,
+        Parameters(params): Parameters<JiraGetProjectVersionsRequest>,
+    ) -> String {
+        info!("获取 Jira 项目版本: {}", params.project_key);
+        match self.searcher.jira() {
+            Some(jira) => {
+                Self::serialize_result(jira.get_project_versions(&params.project_key).await)
+            }
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira 项目组件列表")]
+    pub async fn jira_get_project_components(
+        &self,
+        Parameters(params): Parameters<JiraGetProjectComponentsRequest>,
+    ) -> String {
+        info!("获取 Jira 项目组件: {}", params.project_key);
+        match self.searcher.jira() {
+            Some(jira) => {
+                Self::serialize_result(jira.get_project_components(&params.project_key).await)
+            }
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取当前用户可访问的 Jira 项目列表")]
+    pub async fn jira_get_all_projects(
+        &self,
+        Parameters(params): Parameters<JiraGetAllProjectsRequest>,
+    ) -> String {
+        info!("获取全部 Jira 项目");
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_all_projects(params.include_archived.unwrap_or(false))
+                    .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira 用户资料")]
+    pub async fn jira_get_user_profile(
+        &self,
+        Parameters(params): Parameters<JiraGetUserProfileRequest>,
+    ) -> String {
+        info!("获取 Jira 用户资料: {}", params.user_identifier);
+        match self.searcher.jira() {
+            Some(jira) => {
+                Self::serialize_result(jira.get_user_profile(&params.user_identifier).await)
+            }
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira issue watchers")]
+    pub async fn jira_get_issue_watchers(
+        &self,
+        Parameters(params): Parameters<JiraGetIssueWatchersRequest>,
+    ) -> String {
+        info!("获取 Jira watchers: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(jira.get_issue_watchers(&params.issue_key).await),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "为 Jira issue 添加 watcher")]
+    pub async fn jira_add_watcher(
+        &self,
+        Parameters(params): Parameters<JiraAddWatcherRequest>,
+    ) -> String {
+        info!(
+            "添加 Jira watcher: {} -> {}",
+            params.issue_key, params.user_identifier
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.add_watcher(&params.issue_key, &params.user_identifier)
+                    .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "从 Jira issue 移除 watcher")]
+    pub async fn jira_remove_watcher(
+        &self,
+        Parameters(params): Parameters<JiraRemoveWatcherRequest>,
+    ) -> String {
+        info!("移除 Jira watcher: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.remove_watcher(
+                    &params.issue_key,
+                    params.username.as_deref(),
+                    params.account_id.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Jira issue")]
+    pub async fn jira_create_issue(
+        &self,
+        Parameters(params): Parameters<JiraCreateIssueRequest>,
+    ) -> String {
+        info!(
+            "创建 Jira issue: {} / {}",
+            params.project_key, params.summary
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.create_issue(
+                    &params.project_key,
+                    &params.summary,
+                    &params.issue_type,
+                    params.assignee.as_deref(),
+                    params.description.as_deref(),
+                    params.components.as_deref(),
+                    params.additional_fields,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Jira issue")]
+    pub async fn jira_update_issue(
+        &self,
+        Parameters(params): Parameters<JiraUpdateIssueRequest>,
+    ) -> String {
+        info!("更新 Jira issue: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.update_issue(
+                    &params.issue_key,
+                    params.fields,
+                    params.additional_fields,
+                    params.components.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "删除 Jira issue")]
+    pub async fn jira_delete_issue(
+        &self,
+        Parameters(params): Parameters<JiraDeleteIssueRequest>,
+    ) -> String {
+        info!("删除 Jira issue: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(jira.delete_issue(&params.issue_key).await),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "向 Jira issue 添加评论")]
+    pub async fn jira_add_comment(
+        &self,
+        Parameters(params): Parameters<JiraAddCommentRequest>,
+    ) -> String {
+        info!("添加 Jira 评论: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.add_comment(&params.issue_key, &params.comment, params.visibility)
+                    .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "向 Jira issue 添加 worklog")]
+    pub async fn jira_add_worklog(
+        &self,
+        Parameters(params): Parameters<JiraAddWorklogRequest>,
+    ) -> String {
+        info!("添加 Jira worklog: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.add_worklog(
+                    &params.issue_key,
+                    &params.time_spent,
+                    params.comment.as_deref(),
+                    params.started.as_deref(),
+                    params.original_estimate.as_deref(),
+                    params.remaining_estimate.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "流转 Jira issue 状态")]
+    pub async fn jira_transition_issue(
+        &self,
+        Parameters(params): Parameters<JiraTransitionIssueRequest>,
+    ) -> String {
+        info!(
+            "流转 Jira issue: {} -> {}",
+            params.issue_key, params.transition_id
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.transition_issue(
+                    &params.issue_key,
+                    &params.transition_id,
+                    params.fields,
+                    params.comment.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira issue link types")]
+    pub async fn jira_get_link_types(
+        &self,
+        _params: Parameters<JiraGetLinkTypesRequest>,
+    ) -> String {
+        info!("获取 Jira link types");
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(jira.get_link_types().await),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "下载 Jira issue 的所有附件内容")]
+    pub async fn jira_download_attachments(
+        &self,
+        Parameters(params): Parameters<JiraDownloadAttachmentsRequest>,
+    ) -> String {
+        info!("下载 Jira 附件: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => {
+                Self::serialize_result(jira.download_attachments(&params.issue_key).await)
+            }
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira issue 中的图片附件")]
+    pub async fn jira_get_issue_images(
+        &self,
+        Parameters(params): Parameters<JiraGetIssueImagesRequest>,
+    ) -> String {
+        info!("获取 Jira 图片附件: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(jira.get_issue_images(&params.issue_key).await),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira Agile boards 列表")]
+    pub async fn jira_get_agile_boards(
+        &self,
+        Parameters(params): Parameters<JiraGetAgileBoardsRequest>,
+    ) -> String {
+        info!("获取 Jira boards: {:?}", params.board_name);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_agile_boards(
+                    params.board_name.as_deref(),
+                    params.project_key.as_deref(),
+                    params.board_type.as_deref(),
+                    params.start_at,
+                    params.limit,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira board 下的 issues")]
+    pub async fn jira_get_board_issues(
+        &self,
+        Parameters(params): Parameters<JiraGetBoardIssuesRequest>,
+    ) -> String {
+        info!("获取 Jira board issues: {}", params.board_id);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_board_issues(
+                    &params.board_id,
+                    &params.jql,
+                    params.fields.as_deref(),
+                    params.start_at,
+                    params.limit,
+                    params.expand.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira board 下的 sprints")]
+    pub async fn jira_get_sprints_from_board(
+        &self,
+        Parameters(params): Parameters<JiraGetSprintsFromBoardRequest>,
+    ) -> String {
+        info!("获取 Jira sprints: {}", params.board_id);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_sprints_from_board(
+                    &params.board_id,
+                    params.state.as_deref(),
+                    params.start_at,
+                    params.limit,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira sprint 下的 issues")]
+    pub async fn jira_get_sprint_issues(
+        &self,
+        Parameters(params): Parameters<JiraGetSprintIssuesRequest>,
+    ) -> String {
+        info!("获取 Jira sprint issues: {}", params.sprint_id);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_sprint_issues(
+                    &params.sprint_id,
+                    params.fields.as_deref(),
+                    params.start_at,
+                    params.limit,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "批量创建 Jira issues")]
+    pub async fn jira_batch_create_issues(
+        &self,
+        Parameters(params): Parameters<JiraBatchCreateIssuesRequest>,
+    ) -> String {
+        info!("批量创建 Jira issues: {}", params.issues.len());
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.batch_create_issues(&params.issues, params.validate_only.unwrap_or(false))
+                    .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "批量获取 Jira issues 的 changelogs")]
+    pub async fn jira_batch_get_changelogs(
+        &self,
+        Parameters(params): Parameters<JiraBatchGetChangelogsRequest>,
+    ) -> String {
+        info!(
+            "批量获取 Jira changelogs: {}",
+            params.issue_ids_or_keys.len()
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.batch_get_changelogs(
+                    &params.issue_ids_or_keys,
+                    params.fields.as_deref(),
+                    params.limit,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "编辑 Jira 评论")]
+    pub async fn jira_edit_comment(
+        &self,
+        Parameters(params): Parameters<JiraEditCommentRequest>,
+    ) -> String {
+        info!(
+            "编辑 Jira 评论: {} / {}",
+            params.issue_key, params.comment_id
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.edit_comment(
+                    &params.issue_key,
+                    &params.comment_id,
+                    &params.body,
+                    params.visibility,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "将 Jira issue 关联到 Epic")]
+    pub async fn jira_link_to_epic(
+        &self,
+        Parameters(params): Parameters<JiraLinkToEpicRequest>,
+    ) -> String {
+        info!(
+            "关联 Jira Epic: {} -> {}",
+            params.issue_key, params.epic_key
+        );
+        match self.searcher.jira() {
+            Some(jira) => {
+                Self::serialize_result(jira.link_to_epic(&params.issue_key, &params.epic_key).await)
+            }
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Jira issue link")]
+    pub async fn jira_create_issue_link(
+        &self,
+        Parameters(params): Parameters<JiraCreateIssueLinkRequest>,
+    ) -> String {
+        info!(
+            "创建 Jira issue link: {} <-> {}",
+            params.inward_issue_key, params.outward_issue_key
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.create_issue_link(
+                    &params.link_type,
+                    &params.inward_issue_key,
+                    &params.outward_issue_key,
+                    params.comment.as_deref(),
+                    params.comment_visibility,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Jira 远程 issue link")]
+    pub async fn jira_create_remote_issue_link(
+        &self,
+        Parameters(params): Parameters<JiraCreateRemoteIssueLinkRequest>,
+    ) -> String {
+        info!("创建 Jira 远程链接: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.create_remote_issue_link(
+                    &params.issue_key,
+                    &params.url,
+                    &params.title,
+                    params.summary.as_deref(),
+                    params.relationship.as_deref(),
+                    params.icon_url.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "删除 Jira issue link")]
+    pub async fn jira_remove_issue_link(
+        &self,
+        Parameters(params): Parameters<JiraRemoveIssueLinkRequest>,
+    ) -> String {
+        info!("删除 Jira issue link: {}", params.link_id);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(jira.remove_issue_link(&params.link_id).await),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Jira sprint")]
+    pub async fn jira_create_sprint(
+        &self,
+        Parameters(params): Parameters<JiraCreateSprintRequest>,
+    ) -> String {
+        info!("创建 Jira sprint: {}", params.name);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.create_sprint(
+                    &params.board_id,
+                    &params.name,
+                    &params.start_date,
+                    &params.end_date,
+                    params.goal.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Jira sprint")]
+    pub async fn jira_update_sprint(
+        &self,
+        Parameters(params): Parameters<JiraUpdateSprintRequest>,
+    ) -> String {
+        info!("更新 Jira sprint: {}", params.sprint_id);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.update_sprint(
+                    &params.sprint_id,
+                    params.name.as_deref(),
+                    params.state.as_deref(),
+                    params.start_date.as_deref(),
+                    params.end_date.as_deref(),
+                    params.goal.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "将 issues 加入 Jira sprint")]
+    pub async fn jira_add_issues_to_sprint(
+        &self,
+        Parameters(params): Parameters<JiraAddIssuesToSprintRequest>,
+    ) -> String {
+        info!("Sprint 加入 issues: {}", params.sprint_id);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.add_issues_to_sprint(&params.sprint_id, &params.issue_keys)
+                    .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "按项目获取 Jira Service Desk")]
+    pub async fn jira_get_service_desk_for_project(
+        &self,
+        Parameters(params): Parameters<JiraGetServiceDeskForProjectRequest>,
+    ) -> String {
+        info!("获取 Jira Service Desk: {}", params.project_key);
+        match self.searcher.jira() {
+            Some(jira) => {
+                Self::serialize_result(jira.get_service_desk_for_project(&params.project_key).await)
+            }
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira Service Desk queues")]
+    pub async fn jira_get_service_desk_queues(
+        &self,
+        Parameters(params): Parameters<JiraGetServiceDeskQueuesRequest>,
+    ) -> String {
+        info!("获取 Jira queues: {}", params.service_desk_id);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_service_desk_queues(
+                    &params.service_desk_id,
+                    params.start_at,
+                    params.limit,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira queue 下的 issues")]
+    pub async fn jira_get_queue_issues(
+        &self,
+        Parameters(params): Parameters<JiraGetQueueIssuesRequest>,
+    ) -> String {
+        info!(
+            "获取 Jira queue issues: {} / {}",
+            params.service_desk_id, params.queue_id
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_queue_issues(
+                    &params.service_desk_id,
+                    &params.queue_id,
+                    params.start_at,
+                    params.limit,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Jira 版本")]
+    pub async fn jira_create_version(
+        &self,
+        Parameters(params): Parameters<JiraCreateVersionRequest>,
+    ) -> String {
+        info!("创建 Jira 版本: {} / {}", params.project_key, params.name);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.create_version(
+                    &params.project_key,
+                    &params.name,
+                    params.start_date.as_deref(),
+                    params.release_date.as_deref(),
+                    params.description.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "批量创建 Jira 版本")]
+    pub async fn jira_batch_create_versions(
+        &self,
+        Parameters(params): Parameters<JiraBatchCreateVersionsRequest>,
+    ) -> String {
+        info!("批量创建 Jira 版本: {}", params.versions.len());
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.batch_create_versions(&params.project_key, &params.versions)
+                    .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira issue 的 ProForma 表单列表")]
+    pub async fn jira_get_issue_proforma_forms(
+        &self,
+        Parameters(params): Parameters<JiraGetIssueProformaFormsRequest>,
+    ) -> String {
+        info!("获取 Jira forms: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => {
+                Self::serialize_result(jira.get_issue_proforma_forms(&params.issue_key).await)
+            }
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira ProForma 表单详情")]
+    pub async fn jira_get_proforma_form_details(
+        &self,
+        Parameters(params): Parameters<JiraGetProformaFormDetailsRequest>,
+    ) -> String {
+        info!(
+            "获取 Jira form 详情: {} / {}",
+            params.issue_key, params.form_id
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_proforma_form_details(&params.issue_key, &params.form_id)
+                    .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Jira ProForma 表单答案")]
+    pub async fn jira_update_proforma_form_answers(
+        &self,
+        Parameters(params): Parameters<JiraUpdateProformaFormAnswersRequest>,
+    ) -> String {
+        info!(
+            "更新 Jira form 答案: {} / {}",
+            params.issue_key, params.form_id
+        );
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.update_proforma_form_answers(
+                    &params.issue_key,
+                    &params.form_id,
+                    &params.answers,
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira issue 的日期与状态历史")]
+    pub async fn jira_get_issue_dates(
+        &self,
+        Parameters(params): Parameters<JiraGetIssueDatesRequest>,
+    ) -> String {
+        info!("获取 Jira issue 日期: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_issue_dates(
+                    &params.issue_key,
+                    params.include_status_changes.unwrap_or(true),
+                    params.include_status_summary.unwrap_or(true),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "计算 Jira issue SLA 指标")]
+    pub async fn jira_get_issue_sla(
+        &self,
+        Parameters(params): Parameters<JiraGetIssueSlaRequest>,
+    ) -> String {
+        info!("计算 Jira SLA: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_issue_sla(
+                    &params.issue_key,
+                    params.metrics.as_deref(),
+                    params.working_hours_only,
+                    params.include_raw_dates.unwrap_or(false),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Jira issue 的开发信息")]
+    pub async fn jira_get_issue_development_info(
+        &self,
+        Parameters(params): Parameters<JiraGetIssueDevelopmentInfoRequest>,
+    ) -> String {
+        info!("获取 Jira 开发信息: {}", params.issue_key);
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_issue_development_info(
+                    &params.issue_key,
+                    params.application_type.as_deref(),
+                    params.data_type.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    #[tool(description = "批量获取 Jira issues 的开发信息")]
+    pub async fn jira_get_issues_development_info(
+        &self,
+        Parameters(params): Parameters<JiraGetIssuesDevelopmentInfoRequest>,
+    ) -> String {
+        info!("批量获取 Jira 开发信息: {}", params.issue_keys.len());
+        match self.searcher.jira() {
+            Some(jira) => Self::serialize_result(
+                jira.get_issues_development_info(
+                    &params.issue_keys,
+                    params.application_type.as_deref(),
+                    params.data_type.as_deref(),
+                )
+                .await,
+            ),
+            None => Self::jira_not_configured(),
+        }
+    }
+
+    // ========== Confluence Tools ==========
+
+    #[tool(description = "搜索 Confluence 内容")]
+    pub async fn confluence_search(
+        &self,
+        Parameters(params): Parameters<ConfluenceSearchRequest>,
+    ) -> String {
+        info!("搜索 Confluence: {}", params.query);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .search(&params.query, params.limit, params.spaces_filter.as_deref())
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 页面内容")]
+    pub async fn confluence_get_page(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetPageRequest>,
+    ) -> String {
+        info!("获取 Confluence 页面: {:?}", params.page_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .get_page(
+                        params.page_id.as_deref(),
+                        params.title.as_deref(),
+                        params.space_key.as_deref(),
+                        params.include_metadata.unwrap_or(true),
+                        params.convert_to_markdown.unwrap_or(true),
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 页面子页面")]
+    pub async fn confluence_get_page_children(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetPageChildrenRequest>,
+    ) -> String {
+        info!("获取 Confluence 子页面: {}", params.parent_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .get_page_children(
+                        &params.parent_id,
+                        params.expand.as_deref(),
+                        params.limit,
+                        params.include_content,
+                        params.convert_to_markdown,
+                        params.start,
+                        params.include_folders,
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 页面评论")]
+    pub async fn confluence_get_comments(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetCommentsRequest>,
+    ) -> String {
+        info!("获取 Confluence 评论: {}", params.page_id);
+        match self.searcher.confluence() {
+            Some(confluence) => {
+                Self::serialize_result(confluence.get_comments(&params.page_id).await)
+            }
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 页面标签")]
+    pub async fn confluence_get_labels(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetLabelsRequest>,
+    ) -> String {
+        info!("获取 Confluence 标签: {}", params.page_id);
+        match self.searcher.confluence() {
+            Some(confluence) => {
+                Self::serialize_result(confluence.get_labels(&params.page_id).await)
+            }
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "为 Confluence 页面添加标签")]
+    pub async fn confluence_add_label(
+        &self,
+        Parameters(params): Parameters<ConfluenceAddLabelRequest>,
+    ) -> String {
+        info!(
+            "添加 Confluence 标签: {} -> {}",
+            params.page_id, params.name
+        );
+        match self.searcher.confluence() {
+            Some(confluence) => {
+                Self::serialize_result(confluence.add_label(&params.page_id, &params.name).await)
+            }
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Confluence 页面")]
+    pub async fn confluence_create_page(
+        &self,
+        Parameters(params): Parameters<ConfluenceCreatePageRequest>,
+    ) -> String {
+        info!(
+            "创建 Confluence 页面: {} / {}",
+            params.space_key, params.title
+        );
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .create_page(
+                        &params.space_key,
+                        &params.title,
+                        &params.content,
+                        params.parent_id.as_deref(),
+                        params.content_format.as_deref(),
+                        params.enable_heading_anchors,
+                        params.include_content,
+                        params.emoji.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Confluence 页面")]
+    pub async fn confluence_update_page(
+        &self,
+        Parameters(params): Parameters<ConfluenceUpdatePageRequest>,
+    ) -> String {
+        info!("更新 Confluence 页面: {}", params.page_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .update_page(
+                        &params.page_id,
+                        &params.title,
+                        &params.content,
+                        params.is_minor_edit,
+                        params.version_comment.as_deref(),
+                        params.parent_id.as_deref(),
+                        params.content_format.as_deref(),
+                        params.enable_heading_anchors,
+                        params.include_content,
+                        params.emoji.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "删除 Confluence 页面")]
+    pub async fn confluence_delete_page(
+        &self,
+        Parameters(params): Parameters<ConfluenceDeletePageRequest>,
+    ) -> String {
+        info!("删除 Confluence 页面: {}", params.page_id);
+        match self.searcher.confluence() {
+            Some(confluence) => {
+                Self::serialize_result(confluence.delete_page(&params.page_id).await)
+            }
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "为 Confluence 页面添加评论")]
+    pub async fn confluence_add_comment(
+        &self,
+        Parameters(params): Parameters<ConfluenceAddCommentRequest>,
+    ) -> String {
+        info!("添加 Confluence 评论: {}", params.page_id);
+        match self.searcher.confluence() {
+            Some(confluence) => {
+                Self::serialize_result(confluence.add_comment(&params.page_id, &params.body).await)
+            }
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "回复 Confluence 评论")]
+    pub async fn confluence_reply_to_comment(
+        &self,
+        Parameters(params): Parameters<ConfluenceReplyToCommentRequest>,
+    ) -> String {
+        info!("回复 Confluence 评论: {}", params.comment_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .reply_to_comment(&params.comment_id, &params.body)
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "搜索 Confluence 用户")]
+    pub async fn confluence_search_user(
+        &self,
+        Parameters(params): Parameters<ConfluenceSearchUserRequest>,
+    ) -> String {
+        info!("搜索 Confluence 用户: {}", params.query);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .search_user(&params.query, params.limit, params.group_name.as_deref())
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 历史版本页面")]
+    pub async fn confluence_get_page_history(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetPageHistoryRequest>,
+    ) -> String {
+        info!(
+            "获取 Confluence 页面历史: {} @ {}",
+            params.page_id, params.version
+        );
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .get_page_history(
+                        &params.page_id,
+                        params.version,
+                        params.convert_to_markdown.unwrap_or(true),
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 页面浏览量")]
+    pub async fn confluence_get_page_views(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetPageViewsRequest>,
+    ) -> String {
+        info!("获取 Confluence 页面浏览量: {}", params.page_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .get_page_views(&params.page_id, params.include_title.unwrap_or(true))
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 空间页面树")]
+    pub async fn confluence_get_space_page_tree(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetSpacePageTreeRequest>,
+    ) -> String {
+        info!("获取 Confluence 页面树: {}", params.space_key);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .get_space_page_tree(&params.space_key, params.limit)
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "移动 Confluence 页面")]
+    pub async fn confluence_move_page(
+        &self,
+        Parameters(params): Parameters<ConfluenceMovePageRequest>,
+    ) -> String {
+        info!("移动 Confluence 页面: {}", params.page_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .move_page(
+                        &params.page_id,
+                        params.target_parent_id.as_deref(),
+                        params.target_space_key.as_deref(),
+                        params.position.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "比较 Confluence 页面两个版本的差异")]
+    pub async fn confluence_get_page_diff(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetPageDiffRequest>,
+    ) -> String {
+        info!(
+            "获取 Confluence 页面 diff: {} ({} -> {})",
+            params.page_id, params.from_version, params.to_version
+        );
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .get_page_diff(&params.page_id, params.from_version, params.to_version)
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "向 Confluence 页面上传附件")]
+    pub async fn confluence_upload_attachment(
+        &self,
+        Parameters(params): Parameters<ConfluenceUploadAttachmentRequest>,
+    ) -> String {
+        info!(
+            "上传 Confluence 附件: {} -> {}",
+            params.content_id, params.file_path
+        );
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .upload_attachment(
+                        &params.content_id,
+                        &params.file_path,
+                        params.comment.as_deref(),
+                        params.minor_edit,
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "批量向 Confluence 页面上传附件")]
+    pub async fn confluence_upload_attachments(
+        &self,
+        Parameters(params): Parameters<ConfluenceUploadAttachmentsRequest>,
+    ) -> String {
+        info!("批量上传 Confluence 附件: {}", params.content_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .upload_attachments(
+                        &params.content_id,
+                        &params.file_paths,
+                        params.comment.as_deref(),
+                        params.minor_edit,
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 内容附件列表")]
+    pub async fn confluence_get_attachments(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetAttachmentsRequest>,
+    ) -> String {
+        info!("获取 Confluence 附件: {}", params.content_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .get_attachments(
+                        &params.content_id,
+                        params.start,
+                        params.limit,
+                        params.filename.as_deref(),
+                        params.media_type.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "下载 Confluence 单个附件内容")]
+    pub async fn confluence_download_attachment(
+        &self,
+        Parameters(params): Parameters<ConfluenceDownloadAttachmentRequest>,
+    ) -> String {
+        info!("下载 Confluence 附件: {}", params.attachment_id);
+        match self.searcher.confluence() {
+            Some(confluence) => {
+                Self::serialize_result(confluence.download_attachment(&params.attachment_id).await)
+            }
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "下载 Confluence 页面下的全部附件内容")]
+    pub async fn confluence_download_content_attachments(
+        &self,
+        Parameters(params): Parameters<ConfluenceDownloadContentAttachmentsRequest>,
+    ) -> String {
+        info!("下载 Confluence 内容全部附件: {}", params.content_id);
+        match self.searcher.confluence() {
+            Some(confluence) => Self::serialize_result(
+                confluence
+                    .download_content_attachments(&params.content_id)
+                    .await,
+            ),
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "删除 Confluence 附件")]
+    pub async fn confluence_delete_attachment(
+        &self,
+        Parameters(params): Parameters<ConfluenceDeleteAttachmentRequest>,
+    ) -> String {
+        info!("删除 Confluence 附件: {}", params.attachment_id);
+        match self.searcher.confluence() {
+            Some(confluence) => {
+                Self::serialize_result(confluence.delete_attachment(&params.attachment_id).await)
+            }
+            None => Self::confluence_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Confluence 页面中的图片附件")]
+    pub async fn confluence_get_page_images(
+        &self,
+        Parameters(params): Parameters<ConfluenceGetPageImagesRequest>,
+    ) -> String {
+        info!("获取 Confluence 页面图片: {}", params.content_id);
+        match self.searcher.confluence() {
+            Some(confluence) => {
+                Self::serialize_result(confluence.get_page_images(&params.content_id).await)
+            }
+            None => Self::confluence_not_configured(),
+        }
+    }
+
     // ========== Kubernetes Tools ==========
 
     #[tool(description = "列出 Kubernetes Pod")]
-    pub async fn kube_list_pods(&self, Parameters(params): Parameters<KubeListPodsRequest>) -> String {
+    pub async fn kube_list_pods(
+        &self,
+        Parameters(params): Parameters<KubeListPodsRequest>,
+    ) -> String {
         info!("列出 Kubernetes Pods: namespace={:?}", params.namespace);
         match self.searcher.kubernetes() {
             Some(kube) => match kube.list_pods(params.namespace.as_deref()).await {
@@ -2418,7 +4767,10 @@ impl Tools {
     pub async fn kube_get_pod(&self, Parameters(params): Parameters<KubeGetPodRequest>) -> String {
         info!("获取 Kubernetes Pod: {}", params.name);
         match self.searcher.kubernetes() {
-            Some(kube) => match kube.get_pod(&params.name, params.namespace.as_deref()).await {
+            Some(kube) => match kube
+                .get_pod(&params.name, params.namespace.as_deref())
+                .await
+            {
                 Ok(pod) => serde_json::to_string(&pod)
                     .unwrap_or_else(|_| "Failed to serialize".to_string()),
                 Err(e) => format!("Error: {}", e),
@@ -2428,10 +4780,16 @@ impl Tools {
     }
 
     #[tool(description = "删除 Kubernetes Pod")]
-    pub async fn kube_delete_pod(&self, Parameters(params): Parameters<KubeDeletePodRequest>) -> String {
+    pub async fn kube_delete_pod(
+        &self,
+        Parameters(params): Parameters<KubeDeletePodRequest>,
+    ) -> String {
         info!("删除 Kubernetes Pod: {}", params.name);
         match self.searcher.kubernetes() {
-            Some(kube) => match kube.delete_pod(&params.name, params.namespace.as_deref()).await {
+            Some(kube) => match kube
+                .delete_pod(&params.name, params.namespace.as_deref())
+                .await
+            {
                 Ok(result) => result,
                 Err(e) => format!("Error: {}", e),
             },
@@ -2440,7 +4798,10 @@ impl Tools {
     }
 
     #[tool(description = "列出 Kubernetes 命名空间")]
-    pub async fn kube_list_namespaces(&self, _params: Parameters<KubeListNamespacesRequest>) -> String {
+    pub async fn kube_list_namespaces(
+        &self,
+        _params: Parameters<KubeListNamespacesRequest>,
+    ) -> String {
         info!("列出 Kubernetes 命名空间");
         match self.searcher.kubernetes() {
             Some(kube) => match kube.list_namespaces().await {
@@ -2453,7 +4814,10 @@ impl Tools {
     }
 
     #[tool(description = "列出 Kubernetes 事件")]
-    pub async fn kube_list_events(&self, Parameters(params): Parameters<KubeListEventsRequest>) -> String {
+    pub async fn kube_list_events(
+        &self,
+        Parameters(params): Parameters<KubeListEventsRequest>,
+    ) -> String {
         info!("列出 Kubernetes 事件: namespace={:?}", params.namespace);
         match self.searcher.kubernetes() {
             Some(kube) => match kube.list_events(params.namespace.as_deref()).await {
@@ -2479,7 +4843,10 @@ impl Tools {
     }
 
     #[tool(description = "获取当前 kubeconfig 内容")]
-    pub async fn kube_get_config(&self, Parameters(params): Parameters<KubeGetConfigRequest>) -> String {
+    pub async fn kube_get_config(
+        &self,
+        Parameters(params): Parameters<KubeGetConfigRequest>,
+    ) -> String {
         info!("获取 Kubernetes 配置: minified={:?}", params.minified);
         match self.searcher.kubernetes() {
             Some(kube) => match kube.get_config(params.minified.unwrap_or(false)).await {
@@ -2493,7 +4860,10 @@ impl Tools {
     // ========== 企业微信机器人工具 ==========
 
     #[tool(description = "发送企业微信文本消息")]
-    pub async fn weixin_send_text(&self, Parameters(params): Parameters<WeixinSendTextRequest>) -> String {
+    pub async fn weixin_send_text(
+        &self,
+        Parameters(params): Parameters<WeixinSendTextRequest>,
+    ) -> String {
         info!("发送企业微信文本消息: {}", params.content);
         match self.searcher.weixin() {
             Some(weixin) => match weixin.send_text(
@@ -2509,7 +4879,10 @@ impl Tools {
     }
 
     #[tool(description = "发送企业微信 Markdown 消息")]
-    pub async fn weixin_send_markdown(&self, Parameters(params): Parameters<WeixinSendMarkdownRequest>) -> String {
+    pub async fn weixin_send_markdown(
+        &self,
+        Parameters(params): Parameters<WeixinSendMarkdownRequest>,
+    ) -> String {
         info!("发送企业微信 Markdown 消息");
         match self.searcher.weixin() {
             Some(weixin) => match weixin.send_markdown(&params.content).await {
@@ -2521,7 +4894,10 @@ impl Tools {
     }
 
     #[tool(description = "发送企业微信图片消息")]
-    pub async fn weixin_send_image(&self, Parameters(params): Parameters<WeixinSendImageRequest>) -> String {
+    pub async fn weixin_send_image(
+        &self,
+        Parameters(params): Parameters<WeixinSendImageRequest>,
+    ) -> String {
         info!("发送企业微信图片消息: media_id={}", params.media_id);
         match self.searcher.weixin() {
             Some(weixin) => match weixin.send_image(&params.media_id).await {
@@ -2533,7 +4909,10 @@ impl Tools {
     }
 
     #[tool(description = "发送企业微信文件消息")]
-    pub async fn weixin_send_file(&self, Parameters(params): Parameters<WeixinSendFileRequest>) -> String {
+    pub async fn weixin_send_file(
+        &self,
+        Parameters(params): Parameters<WeixinSendFileRequest>,
+    ) -> String {
         info!("发送企业微信文件消息: media_id={}", params.media_id);
         match self.searcher.weixin() {
             Some(weixin) => match weixin.send_file(&params.media_id).await {
@@ -2545,7 +4924,10 @@ impl Tools {
     }
 
     #[tool(description = "发送企业微信图文消息")]
-    pub async fn weixin_send_news(&self, Parameters(params): Parameters<WeixinSendNewsRequest>) -> String {
+    pub async fn weixin_send_news(
+        &self,
+        Parameters(params): Parameters<WeixinSendNewsRequest>,
+    ) -> String {
         info!("发送企业微信图文消息: {} 篇文章", params.articles.len());
         match self.searcher.weixin() {
             Some(weixin) => {
@@ -2577,11 +4959,11 @@ impl ServerHandler for Tools {
                 ..Default::default()
             },
             instructions: Some(
-                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, Doris database operations, WeChat Work (企业微信) webhook notifications, and Kubernetes cluster management!".into(),
+                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, Doris database operations, Jira and Confluence collaboration tools, WeChat Work (企业微信) webhook notifications, and Kubernetes cluster management!".into(),
             ),
             server_info: Implementation {
                 name: "observability-mcp-server".into(),
-                version: "0.4.0".into(),
+                version: "0.5.0".into(),
                 ..Default::default()
             },
         }

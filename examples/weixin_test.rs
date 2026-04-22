@@ -1,12 +1,11 @@
+use dotenv::dotenv;
 /// 企业微信机器人测试示例
 ///
 /// 使用方法：
 /// 1. 确保 .env 文件中配置了 WEIXIN_WEBHOOK_URL
 /// 2. 运行: cargo run --example weixin_test
 ///
-
 use std::env;
-use dotenv::dotenv;
 
 // 注意：这是一个示例文件，展示如何直接使用 WeixinClient
 // 在实际使用中，这些工具会通过 MCP 协议被调用
@@ -16,8 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
     // 从环境变量获取 Webhook URL
-    let webhook_url = env::var("WEIXIN_WEBHOOK_URL")
-        .expect("WEIXIN_WEBHOOK_URL must be set");
+    let webhook_url = env::var("WEIXIN_WEBHOOK_URL").expect("WEIXIN_WEBHOOK_URL must be set");
 
     println!("企业微信机器人测试");
     println!("==================");

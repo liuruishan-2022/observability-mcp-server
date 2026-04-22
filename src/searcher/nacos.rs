@@ -1,6 +1,6 @@
+use crate::searcher::SearcherError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use crate::searcher::SearcherError;
 
 /// Nacos API 客户端
 ///
@@ -56,10 +56,14 @@ impl NacosClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SearcherError::ApiError(
-                format!("GET {} failed: {} - {}", url, status, error_text)
-            ));
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(SearcherError::ApiError(format!(
+                "GET {} failed: {} - {}",
+                url, status, error_text
+            )));
         }
 
         let data = response.json().await?;
@@ -93,10 +97,14 @@ impl NacosClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SearcherError::ApiError(
-                format!("GET {} failed: {} - {}", url, status, error_text)
-            ));
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(SearcherError::ApiError(format!(
+                "GET {} failed: {} - {}",
+                url, status, error_text
+            )));
         }
 
         let data = response.json().await?;
@@ -113,7 +121,10 @@ impl NacosClient {
     // ========== Service API ==========
 
     /// 获取服务列表
-    pub async fn list_services(&self, params: &ListServicesParams) -> Result<ServicesResponse, SearcherError> {
+    pub async fn list_services(
+        &self,
+        params: &ListServicesParams,
+    ) -> Result<ServicesResponse, SearcherError> {
         let mut query_params: Vec<(&str, String)> = vec![
             ("pageNo", params.page_no.to_string()),
             ("pageSize", params.page_size.to_string()),
@@ -135,12 +146,17 @@ impl NacosClient {
             query_params.push(("withInstances", with_instances.to_string()));
         }
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/ns/service/list", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/ns/service/list", &params_refs)
+            .await
     }
 
     /// 获取服务详情
-    pub async fn get_service(&self, params: &GetServiceParams) -> Result<ServiceDetail, SearcherError> {
+    pub async fn get_service(
+        &self,
+        params: &GetServiceParams,
+    ) -> Result<ServiceDetail, SearcherError> {
         let mut query_params = vec![];
 
         if let Some(ns) = &params.namespace_id {
@@ -151,12 +167,17 @@ impl NacosClient {
         }
         query_params.push(("serviceName", &params.service_name));
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/ns/service", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/ns/service", &params_refs)
+            .await
     }
 
     /// 获取服务实例列表
-    pub async fn list_instances(&self, params: &ListInstancesParams) -> Result<InstancesResponse, SearcherError> {
+    pub async fn list_instances(
+        &self,
+        params: &ListInstancesParams,
+    ) -> Result<InstancesResponse, SearcherError> {
         let mut query_params = vec![];
 
         if let Some(ns) = &params.namespace_id {
@@ -171,12 +192,17 @@ impl NacosClient {
             query_params.push(("clusterName", cluster));
         }
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/ns/instance/list", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/ns/instance/list", &params_refs)
+            .await
     }
 
     /// 获取服务订阅者列表
-    pub async fn list_service_subscribers(&self, params: &ListServiceSubscribersParams) -> Result<ServiceSubscribersResponse, SearcherError> {
+    pub async fn list_service_subscribers(
+        &self,
+        params: &ListServiceSubscribersParams,
+    ) -> Result<ServiceSubscribersResponse, SearcherError> {
         let mut query_params: Vec<(&str, String)> = vec![
             ("pageNo", params.page_no.to_string()),
             ("pageSize", params.page_size.to_string()),
@@ -194,14 +220,19 @@ impl NacosClient {
             query_params.push(("aggregation", aggregation.to_string()));
         }
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/ns/service/subscribers", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/ns/service/subscribers", &params_refs)
+            .await
     }
 
     // ========== Configuration API ==========
 
     /// 获取配置列表
-    pub async fn list_configs(&self, params: &ListConfigsParams) -> Result<ConfigsResponse, SearcherError> {
+    pub async fn list_configs(
+        &self,
+        params: &ListConfigsParams,
+    ) -> Result<ConfigsResponse, SearcherError> {
         let mut query_params: Vec<(&str, String)> = vec![
             ("pageNo", params.page_no.to_string()),
             ("pageSize", params.page_size.to_string()),
@@ -229,12 +260,17 @@ impl NacosClient {
             query_params.push(("search", search.clone()));
         }
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/cs/config/list", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/cs/config/list", &params_refs)
+            .await
     }
 
     /// 获取配置详情
-    pub async fn get_config(&self, params: &GetConfigParams) -> Result<ConfigDetail, SearcherError> {
+    pub async fn get_config(
+        &self,
+        params: &GetConfigParams,
+    ) -> Result<ConfigDetail, SearcherError> {
         let mut query_params = vec![];
 
         if let Some(ns) = &params.namespace_id {
@@ -243,12 +279,17 @@ impl NacosClient {
         query_params.push(("groupName", &params.group_name));
         query_params.push(("dataId", &params.data_id));
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/cs/config", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/cs/config", &params_refs)
+            .await
     }
 
     /// 获取配置历史列表
-    pub async fn list_config_history(&self, params: &ListConfigHistoryParams) -> Result<ConfigHistoryResponse, SearcherError> {
+    pub async fn list_config_history(
+        &self,
+        params: &ListConfigHistoryParams,
+    ) -> Result<ConfigHistoryResponse, SearcherError> {
         let mut query_params: Vec<(&str, String)> = vec![
             ("pageNo", params.page_no.to_string()),
             ("pageSize", params.page_size.to_string()),
@@ -260,12 +301,17 @@ impl NacosClient {
         query_params.push(("groupName", params.group_name.clone()));
         query_params.push(("dataId", params.data_id.clone()));
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/cs/history/list", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/cs/history/list", &params_refs)
+            .await
     }
 
     /// 获取配置历史详情
-    pub async fn get_config_history(&self, params: &GetConfigHistoryParams) -> Result<ConfigHistoryDetail, SearcherError> {
+    pub async fn get_config_history(
+        &self,
+        params: &GetConfigHistoryParams,
+    ) -> Result<ConfigHistoryDetail, SearcherError> {
         let mut query_params: Vec<(&str, String)> = vec![];
 
         if let Some(ns) = &params.namespace_id {
@@ -278,12 +324,17 @@ impl NacosClient {
             query_params.push(("nid", nid.to_string()));
         }
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/cs/history", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/cs/history", &params_refs)
+            .await
     }
 
     /// 获取配置监听器列表
-    pub async fn list_config_listeners(&self, params: &ListConfigListenersParams) -> Result<ConfigListenersResponse, SearcherError> {
+    pub async fn list_config_listeners(
+        &self,
+        params: &ListConfigListenersParams,
+    ) -> Result<ConfigListenersResponse, SearcherError> {
         let mut query_params: Vec<(&str, String)> = vec![];
 
         if let Some(ns) = &params.namespace_id {
@@ -296,12 +347,17 @@ impl NacosClient {
             query_params.push(("aggregation", aggregation.to_string()));
         }
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/cs/config/listener", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/cs/config/listener", &params_refs)
+            .await
     }
 
     /// 获取客户端监听的配置列表
-    pub async fn list_listened_configs(&self, params: &ListListenedConfigsParams) -> Result<ListenedConfigsResponse, SearcherError> {
+    pub async fn list_listened_configs(
+        &self,
+        params: &ListListenedConfigsParams,
+    ) -> Result<ListenedConfigsResponse, SearcherError> {
         let mut query_params: Vec<(&str, String)> = vec![("ip", params.ip.clone())];
 
         if let Some(ns) = &params.namespace_id {
@@ -311,8 +367,10 @@ impl NacosClient {
             query_params.push(("aggregation", aggregation.to_string()));
         }
 
-        let params_refs: Vec<(&str, &str)> = query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        self.get_with_params("/nacos/v3/admin/cs/listener", &params_refs).await
+        let params_refs: Vec<(&str, &str)> =
+            query_params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        self.get_with_params("/nacos/v3/admin/cs/listener", &params_refs)
+            .await
     }
 }
 

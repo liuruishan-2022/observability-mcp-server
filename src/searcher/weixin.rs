@@ -1,7 +1,7 @@
+use crate::searcher::SearcherError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::searcher::SearcherError;
 
 /// 企业微信机器人客户端
 pub struct WeixinClient {
@@ -69,7 +69,8 @@ impl WeixinClient {
                     "success": true,
                     "message": "Message sent successfully",
                     "data": result
-                }).to_string())
+                })
+                .to_string())
             } else {
                 Err(SearcherError::ApiError(format!(
                     "WeChat API error: {} (errcode: {})",
@@ -78,7 +79,10 @@ impl WeixinClient {
             }
         } else {
             let status = response.status();
-            let body = response.text().await.unwrap_or_else(|_| "Unable to read response body".to_string());
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
             Err(SearcherError::ApiError(format!(
                 "HTTP error: {} - {}",
                 status.as_u16(),
@@ -110,7 +114,8 @@ impl WeixinClient {
                     "success": true,
                     "message": "Markdown message sent successfully",
                     "data": result
-                }).to_string())
+                })
+                .to_string())
             } else {
                 Err(SearcherError::ApiError(format!(
                     "WeChat API error: {} (errcode: {})",
@@ -119,7 +124,10 @@ impl WeixinClient {
             }
         } else {
             let status = response.status();
-            let body = response.text().await.unwrap_or_else(|_| "Unable to read response body".to_string());
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
             Err(SearcherError::ApiError(format!(
                 "HTTP error: {} - {}",
                 status.as_u16(),
@@ -151,7 +159,8 @@ impl WeixinClient {
                     "success": true,
                     "message": "Image message sent successfully",
                     "data": result
-                }).to_string())
+                })
+                .to_string())
             } else {
                 Err(SearcherError::ApiError(format!(
                     "WeChat API error: {} (errcode: {})",
@@ -160,7 +169,10 @@ impl WeixinClient {
             }
         } else {
             let status = response.status();
-            let body = response.text().await.unwrap_or_else(|_| "Unable to read response body".to_string());
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
             Err(SearcherError::ApiError(format!(
                 "HTTP error: {} - {}",
                 status.as_u16(),
@@ -192,7 +204,8 @@ impl WeixinClient {
                     "success": true,
                     "message": "News message sent successfully",
                     "data": result
-                }).to_string())
+                })
+                .to_string())
             } else {
                 Err(SearcherError::ApiError(format!(
                     "WeChat API error: {} (errcode: {})",
@@ -201,7 +214,10 @@ impl WeixinClient {
             }
         } else {
             let status = response.status();
-            let body = response.text().await.unwrap_or_else(|_| "Unable to read response body".to_string());
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
             Err(SearcherError::ApiError(format!(
                 "HTTP error: {} - {}",
                 status.as_u16(),
@@ -233,7 +249,8 @@ impl WeixinClient {
                     "success": true,
                     "message": "File message sent successfully",
                     "data": result
-                }).to_string())
+                })
+                .to_string())
             } else {
                 Err(SearcherError::ApiError(format!(
                     "WeChat API error: {} (errcode: {})",
@@ -242,7 +259,10 @@ impl WeixinClient {
             }
         } else {
             let status = response.status();
-            let body = response.text().await.unwrap_or_else(|_| "Unable to read response body".to_string());
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
             Err(SearcherError::ApiError(format!(
                 "HTTP error: {} - {}",
                 status.as_u16(),

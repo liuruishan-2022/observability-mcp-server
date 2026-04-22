@@ -44,8 +44,7 @@ impl DocsLoader {
         let mut file_map = HashMap::new();
 
         // 遍历文档目录，查找所有 .md 文件
-        let entries = fs::read_dir(docs_dir)
-            .map_err(|e| SearcherError::IoError(e))?;
+        let entries = fs::read_dir(docs_dir).map_err(|e| SearcherError::IoError(e))?;
 
         for entry in entries {
             let entry = entry.map_err(|e| SearcherError::IoError(e))?;
@@ -69,8 +68,7 @@ impl DocsLoader {
             debug!("Processing documentation file: {}", file_name);
 
             // 读取文件内容
-            let content = fs::read_to_string(&path)
-                .map_err(|e| SearcherError::IoError(e))?;
+            let content = fs::read_to_string(&path).map_err(|e| SearcherError::IoError(e))?;
 
             // 移除 frontmatter（如果存在）
             let content = Self::strip_frontmatter(&content);
@@ -94,10 +92,7 @@ impl DocsLoader {
             file_map.len()
         );
 
-        Ok(DocsLoader {
-            chunks,
-            file_map,
-        })
+        Ok(DocsLoader { chunks, file_map })
     }
 
     /// 移除 markdown 文件的 frontmatter
@@ -147,7 +142,8 @@ impl DocsLoader {
 
     /// 读取指定文件的内容
     pub fn read_file(&self, file_name: &str) -> Result<String, SearcherError> {
-        let indices = self.file_map
+        let indices = self
+            .file_map
             .get(file_name)
             .ok_or_else(|| SearcherError::Other(format!("File not found: {}", file_name)))?;
 

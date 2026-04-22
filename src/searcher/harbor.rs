@@ -1,7 +1,7 @@
+use crate::searcher::SearcherError;
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::searcher::SearcherError;
 
 /// Harbor API 客户端
 pub struct HarborClient {
@@ -53,10 +53,14 @@ impl HarborClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SearcherError::ApiError(
-                format!("GET {} failed: {} - {}", url, status, error_text)
-            ));
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(SearcherError::ApiError(format!(
+                "GET {} failed: {} - {}",
+                url, status, error_text
+            )));
         }
 
         let data = response.json().await?;
@@ -75,10 +79,14 @@ impl HarborClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SearcherError::ApiError(
-                format!("DELETE {} failed: {} - {}", url, status, error_text)
-            ));
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(SearcherError::ApiError(format!(
+                "DELETE {} failed: {} - {}",
+                url, status, error_text
+            )));
         }
 
         Ok(())
@@ -102,10 +110,14 @@ impl HarborClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SearcherError::ApiError(
-                format!("POST {} failed: {} - {}", url, status, error_text)
-            ));
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(SearcherError::ApiError(format!(
+                "POST {} failed: {} - {}",
+                url, status, error_text
+            )));
         }
 
         let data = response.json().await?;
@@ -126,7 +138,10 @@ impl HarborClient {
     }
 
     /// 创建项目
-    pub async fn create_project(&self, request: &CreateProjectRequest) -> Result<Project, SearcherError> {
+    pub async fn create_project(
+        &self,
+        request: &CreateProjectRequest,
+    ) -> Result<Project, SearcherError> {
         self.post("/projects", request).await
     }
 
@@ -135,15 +150,20 @@ impl HarborClient {
     /// # 参数
     /// - `project_id_or_name`: 项目 ID 或项目名称
     pub async fn delete_project(&self, project_id_or_name: &str) -> Result<(), SearcherError> {
-        self.delete(&format!("/projects/{}", project_id_or_name)).await
+        self.delete(&format!("/projects/{}", project_id_or_name))
+            .await
     }
 
     /// 获取项目的仓库列表
     ///
     /// # 参数
     /// - `project_id_or_name`: 项目 ID 或项目名称
-    pub async fn get_repositories(&self, project_id_or_name: &str) -> Result<Vec<Repository>, SearcherError> {
-        self.get(&format!("/projects/{}/repositories", project_id_or_name)).await
+    pub async fn get_repositories(
+        &self,
+        project_id_or_name: &str,
+    ) -> Result<Vec<Repository>, SearcherError> {
+        self.get(&format!("/projects/{}/repositories", project_id_or_name))
+            .await
     }
 
     /// 删除仓库
@@ -151,8 +171,16 @@ impl HarborClient {
     /// # 参数
     /// - `project_id_or_name`: 项目 ID 或项目名称
     /// - `repository_name`: 仓库名称
-    pub async fn delete_repository(&self, project_id_or_name: &str, repository_name: &str) -> Result<(), SearcherError> {
-        self.delete(&format!("/projects/{}/repositories/{}", project_id_or_name, repository_name)).await
+    pub async fn delete_repository(
+        &self,
+        project_id_or_name: &str,
+        repository_name: &str,
+    ) -> Result<(), SearcherError> {
+        self.delete(&format!(
+            "/projects/{}/repositories/{}",
+            project_id_or_name, repository_name
+        ))
+        .await
     }
 
     /// 获取仓库的标签列表
@@ -160,11 +188,16 @@ impl HarborClient {
     /// # 参数
     /// - `project_id_or_name`: 项目 ID 或项目名称
     /// - `repository_name`: 仓库名称
-    pub async fn get_artifacts(&self, project_id_or_name: &str, repository_name: &str) -> Result<Vec<Artifact>, SearcherError> {
+    pub async fn get_artifacts(
+        &self,
+        project_id_or_name: &str,
+        repository_name: &str,
+    ) -> Result<Vec<Artifact>, SearcherError> {
         self.get(&format!(
             "/projects/{}/repositories/{}/artifacts",
             project_id_or_name, repository_name
-        )).await
+        ))
+        .await
     }
 
     /// 删除标签
@@ -173,19 +206,29 @@ impl HarborClient {
     /// - `project_id_or_name`: 项目 ID 或项目名称
     /// - `repository_name`: 仓库名称
     /// - `digest`: artifact digest
-    pub async fn delete_artifact(&self, project_id_or_name: &str, repository_name: &str, digest: &str) -> Result<(), SearcherError> {
+    pub async fn delete_artifact(
+        &self,
+        project_id_or_name: &str,
+        repository_name: &str,
+        digest: &str,
+    ) -> Result<(), SearcherError> {
         self.delete(&format!(
             "/projects/{}/repositories/{}/artifacts/{}",
             project_id_or_name, repository_name, digest
-        )).await
+        ))
+        .await
     }
 
     /// 获取项目的 Helm Charts
     ///
     /// # 参数
     /// - `project_id_or_name`: 项目 ID 或项目名称
-    pub async fn get_helm_charts(&self, project_id_or_name: &str) -> Result<Vec<HelmChart>, SearcherError> {
-        self.get(&format!("/projects/{}/helm/charts", project_id_or_name)).await
+    pub async fn get_helm_charts(
+        &self,
+        project_id_or_name: &str,
+    ) -> Result<Vec<HelmChart>, SearcherError> {
+        self.get(&format!("/projects/{}/helm/charts", project_id_or_name))
+            .await
     }
 
     /// 获取 Helm Chart 的版本列表
@@ -193,11 +236,16 @@ impl HarborClient {
     /// # 参数
     /// - `project_id_or_name`: 项目 ID 或项目名称
     /// - `chart_name`: Chart 名称
-    pub async fn get_helm_chart_versions(&self, project_id_or_name: &str, chart_name: &str) -> Result<Vec<HelmChartVersion>, SearcherError> {
+    pub async fn get_helm_chart_versions(
+        &self,
+        project_id_or_name: &str,
+        chart_name: &str,
+    ) -> Result<Vec<HelmChartVersion>, SearcherError> {
         self.get(&format!(
             "/projects/{}/helm/charts/{}/versions",
             project_id_or_name, chart_name
-        )).await
+        ))
+        .await
     }
 
     /// 删除 Helm Chart 版本
@@ -215,7 +263,8 @@ impl HarborClient {
         self.delete(&format!(
             "/projects/{}/helm/charts/{}/versions/{}",
             project_id_or_name, chart_name, version
-        )).await
+        ))
+        .await
     }
 }
 

@@ -116,17 +116,16 @@ impl DorisClient {
     async fn get_pool(&self) -> Result<MySqlPool, SearcherError> {
         self.ensure_connected().await?;
         let pool_guard = self.pool.lock().await;
-        pool_guard
-            .as_ref()
-            .cloned()
-            .ok_or_else(|| SearcherError::ApiError("Doris connection pool not initialized".to_string()))
+        pool_guard.as_ref().cloned().ok_or_else(|| {
+            SearcherError::ApiError("Doris connection pool not initialized".to_string())
+        })
     }
 
     async fn acquire_connection(&self) -> Result<PoolConnection<MySql>, SearcherError> {
         let pool = self.get_pool().await?;
-        pool.acquire()
-            .await
-            .map_err(|e| SearcherError::ApiError(format!("Failed to acquire Doris connection: {}", e)))
+        pool.acquire().await.map_err(|e| {
+            SearcherError::ApiError(format!("Failed to acquire Doris connection: {}", e))
+        })
     }
 
     fn effective_database_name<'a>(&'a self, db_name: Option<&'a str>) -> &'a str {
@@ -363,9 +362,7 @@ impl DorisClient {
         labels
     }
 
-    fn parse_prometheus_metrics(
-        metrics_text: &str,
-    ) -> BTreeMap<String, MonitoringMetricValue> {
+    fn parse_prometheus_metrics(metrics_text: &str) -> BTreeMap<String, MonitoringMetricValue> {
         let mut metrics = BTreeMap::new();
 
         for line in metrics_text.lines() {
@@ -390,7 +387,8 @@ impl DorisClient {
                     continue;
                 };
                 let metric_name = &metric_part[..label_start];
-                let labels = Self::parse_prometheus_labels(&metric_part[label_start + 1..label_end]);
+                let labels =
+                    Self::parse_prometheus_labels(&metric_part[label_start + 1..label_end]);
                 let sample = MonitoringMetricSample { labels, value };
 
                 match metrics.remove(metric_name) {
@@ -435,7 +433,10 @@ impl DorisClient {
         token
             .trim_matches(|c: char| {
                 c.is_whitespace()
-                    || matches!(c, ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | '\n' | '\r')
+                    || matches!(
+                        c,
+                        ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | '\n' | '\r'
+                    )
             })
             .trim_matches('`')
             .trim_matches('\'')
@@ -490,9 +491,7 @@ impl DorisClient {
                         parts[0],
                     )
                 })
-                .or_else(|| {
-                    catalog_name.map(|catalog| format!("{}.{}", catalog, parts[0]))
-                })
+                .or_else(|| catalog_name.map(|catalog| format!("{}.{}", catalog, parts[0])))
                 .or_else(|| Some(parts[0].to_string())),
             2 => catalog_name
                 .map(|catalog| Self::qualified_table_name(catalog, parts[0], parts[1]))
@@ -553,9 +552,7 @@ impl DorisClient {
                     }
                 }
                 "table" => {
-                    if index > 0
-                        && matches!(tokens[index - 1].0, "create" | "replace" | "alter")
-                    {
+                    if index > 0 && matches!(tokens[index - 1].0, "create" | "replace" | "alter") {
                         if let Some((_, original)) = tokens.get(index + 1) {
                             return Self::canonicalize_table_reference(
                                 original,
@@ -723,9 +720,18 @@ impl DorisClient {
             None
         };
 
-        let key_type = ["unique key", "aggregate key", "duplicate key", "primary key"]
-            .iter()
-            .find_map(|key_type| lowered.contains(key_type).then_some((*key_type).to_ascii_uppercase()));
+        let key_type = [
+            "unique key",
+            "aggregate key",
+            "duplicate key",
+            "primary key",
+        ]
+        .iter()
+        .find_map(|key_type| {
+            lowered
+                .contains(key_type)
+                .then_some((*key_type).to_ascii_uppercase())
+        });
 
         serde_json::json!({
             "partition_type": partition_type,
@@ -942,12 +948,7 @@ impl DorisClient {
         match raw_data {
             serde_json::Value::Array(records) => {
                 for record in records {
-                    Self::process_table_data_size_record(
-                        &mut report,
-                        record,
-                        db_name,
-                        table_name,
-                    );
+                    Self::process_table_data_size_record(&mut report, record, db_name, table_name);
                 }
             }
             serde_json::Value::Object(root) => {
@@ -1000,7 +1001,9 @@ impl DorisClient {
     fn sanitize_query_sql(sql: &str) -> Result<String, SearcherError> {
         let trimmed = sql.trim();
         if trimmed.is_empty() {
-            return Err(SearcherError::ApiError("SQL statement cannot be empty".to_string()));
+            return Err(SearcherError::ApiError(
+                "SQL statement cannot be empty".to_string(),
+            ));
         }
 
         let trimmed = trimmed.trim_end_matches(';').trim();
@@ -1071,7 +1074,9 @@ impl DorisClient {
         sqlx::query(statement)
             .execute(&mut **conn)
             .await
-            .map_err(|e| SearcherError::ApiError(format!("Failed to execute '{}': {}", statement, e)))?;
+            .map_err(|e| {
+                SearcherError::ApiError(format!("Failed to execute '{}': {}", statement, e))
+            })?;
         Ok(())
     }
 
@@ -1113,7 +1118,9 @@ impl DorisClient {
             sqlx::query(sql).fetch_all(&mut **conn),
         )
         .await
-        .map_err(|_| SearcherError::ApiError(format!("Query timed out after {} seconds", timeout_secs)))?
+        .map_err(|_| {
+            SearcherError::ApiError(format!("Query timed out after {} seconds", timeout_secs))
+        })?
         .map_err(|e| SearcherError::ApiError(format!("Query execution failed: {}", e)))
     }
 
@@ -1169,7 +1176,10 @@ impl DorisClient {
         }
     }
 
-    fn information_schema_prefix(&self, catalog_name: Option<&str>) -> Result<String, SearcherError> {
+    fn information_schema_prefix(
+        &self,
+        catalog_name: Option<&str>,
+    ) -> Result<String, SearcherError> {
         let effective_catalog = self.effective_catalog_name(catalog_name);
         Self::validate_identifier(effective_catalog, "catalog name")?;
 
@@ -1215,7 +1225,8 @@ impl DorisClient {
         let rows = Self::fetch_rows(&mut conn, &sanitized_sql, timeout_secs).await?;
         let execution_time_ms = start.elapsed().as_millis() as u64;
 
-        let result = Self::build_query_result(rows, &sanitized_sql, execution_time_ms, Some(max_rows));
+        let result =
+            Self::build_query_result(rows, &sanitized_sql, execution_time_ms, Some(max_rows));
         tracing::info!(
             "Query returned {} rows ({} total) in {}ms",
             result.row_count,
@@ -1276,7 +1287,8 @@ impl DorisClient {
     ) -> Result<DatabaseListResponse, SearcherError> {
         let mut conn = self.acquire_connection().await?;
         let effective_catalog = self.apply_catalog_context(&mut conn, catalog_name).await?;
-        let rows = Self::fetch_rows(&mut conn, "SHOW DATABASES", DEFAULT_QUERY_TIMEOUT_SECS).await?;
+        let rows =
+            Self::fetch_rows(&mut conn, "SHOW DATABASES", DEFAULT_QUERY_TIMEOUT_SECS).await?;
         let result = Self::build_query_result(rows, "SHOW DATABASES", 0, None);
         let databases: Vec<String> = result
             .data
@@ -1486,7 +1498,11 @@ impl DorisClient {
             .and_then(|value| value.get("TOTAL_SIZE"))
             .and_then(Self::json_value_to_u64)
             .or_else(|| {
-                Some(data_length.unwrap_or(0).saturating_add(index_length.unwrap_or(0)))
+                Some(
+                    data_length
+                        .unwrap_or(0)
+                        .saturating_add(index_length.unwrap_or(0)),
+                )
             });
 
         Ok(TableSizeInfo {
@@ -2060,8 +2076,7 @@ impl DorisClient {
                         OR LOWER(`stmt`) LIKE 'stream load%'
                         OR LOWER(`stmt`) LIKE 'merge %'
                    )",
-                (chrono::Local::now() - chrono::Duration::days(30))
-                    .format("%Y-%m-%d %H:%M:%S"),
+                (chrono::Local::now() - chrono::Duration::days(30)).format("%Y-%m-%d %H:%M:%S"),
                 Self::escape_sql_string(&table_name.to_ascii_lowercase())
             );
             let activity = self
@@ -2093,8 +2108,7 @@ impl DorisClient {
             let freshness_dt = freshness_candidate
                 .as_deref()
                 .and_then(Self::parse_datetime_string);
-            let freshness_age_hours = freshness_dt
-                .map(|dt| (now - dt).num_hours().max(0) as u64);
+            let freshness_age_hours = freshness_dt.map(|dt| (now - dt).num_hours().max(0) as u64);
             let is_fresh = freshness_age_hours
                 .map(|hours| hours <= threshold_hours)
                 .unwrap_or(false);
@@ -2130,7 +2144,9 @@ impl DorisClient {
         let total_tables = fresh_tables + stale_tables;
         let alerts = table_freshness
             .iter()
-            .filter(|(_, value)| value.get("status").and_then(|item| item.as_str()) == Some("stale"))
+            .filter(|(_, value)| {
+                value.get("status").and_then(|item| item.as_str()) == Some("stale")
+            })
             .map(|(table_name, value)| {
                 serde_json::json!({
                     "table_name": table_name,
@@ -2423,9 +2439,7 @@ impl DorisClient {
                     .get("stmt")
                     .and_then(Self::json_value_to_string)
                     .unwrap_or_default();
-                let audit_db = entry
-                    .get("db")
-                    .and_then(Self::json_value_to_string);
+                let audit_db = entry.get("db").and_then(Self::json_value_to_string);
                 serde_json::json!({
                     "user_name": entry.get("user").and_then(Self::json_value_to_string),
                     "db_name": entry.get("db").and_then(Self::json_value_to_string),
@@ -2512,9 +2526,20 @@ impl DorisClient {
         let start = Instant::now();
         let days = Self::normalize_audit_log_days(days);
         let resource_types = resource_types
-            .map(|values| values.iter().map(|value| value.to_ascii_lowercase()).collect::<Vec<_>>())
+            .map(|values| {
+                values
+                    .iter()
+                    .map(|value| value.to_ascii_lowercase())
+                    .collect::<Vec<_>>()
+            })
             .filter(|values| !values.is_empty())
-            .unwrap_or_else(|| vec!["storage".to_string(), "query_volume".to_string(), "user_activity".to_string()]);
+            .unwrap_or_else(|| {
+                vec![
+                    "storage".to_string(),
+                    "query_volume".to_string(),
+                    "user_activity".to_string(),
+                ]
+            });
         let entries = self
             .fetch_audit_log_entries(days, DEFAULT_ANALYSIS_AUDIT_LOG_LIMIT, true, true)
             .await?;
@@ -2531,7 +2556,10 @@ impl DorisClient {
                 .get("user")
                 .and_then(Self::json_value_to_string)
                 .unwrap_or_else(|| "unknown".to_string());
-            daily_user_activity.entry(date_key).or_default().insert(user);
+            daily_user_activity
+                .entry(date_key)
+                .or_default()
+                .insert(user);
         }
 
         let query_series = daily_query_volume
@@ -2580,11 +2608,18 @@ impl DorisClient {
             );
         }
         if resource_types.iter().any(|value| value == "user_activity") {
-            let current = daily_user_activity.values().last().map(|users| users.len()).unwrap_or(0);
+            let current = daily_user_activity
+                .values()
+                .last()
+                .map(|users| users.len())
+                .unwrap_or(0);
             let average = if daily_user_activity.is_empty() {
                 0.0
             } else {
-                daily_user_activity.values().map(|users| users.len()).sum::<usize>() as f64
+                daily_user_activity
+                    .values()
+                    .map(|users| users.len())
+                    .sum::<usize>() as f64
                     / daily_user_activity.len() as f64
             };
             resource_analysis.insert(
@@ -2604,7 +2639,10 @@ impl DorisClient {
             let query_prediction = if daily_query_volume.len() >= 2 {
                 let first = daily_query_volume.values().next().copied().unwrap_or(0) as f64;
                 let last = daily_query_volume.values().last().copied().unwrap_or(0) as f64;
-                Some(((last - first) / daily_query_volume.len() as f64 * 7.0 * 100.0).round() / 100.0)
+                Some(
+                    ((last - first) / daily_query_volume.len() as f64 * 7.0 * 100.0).round()
+                        / 100.0,
+                )
             } else {
                 None
             };
@@ -2697,15 +2735,31 @@ impl DorisClient {
                 }
 
                 for source in refs.into_iter().filter(|source| source != &destination) {
-                    graph.entry(destination.clone()).or_default().upstream.insert(source.clone());
-                    graph.entry(source.clone()).or_default().downstream.insert(destination.clone());
+                    graph
+                        .entry(destination.clone())
+                        .or_default()
+                        .upstream
+                        .insert(source.clone());
+                    graph
+                        .entry(source.clone())
+                        .or_default()
+                        .downstream
+                        .insert(destination.clone());
                 }
             } else if include_views && refs.len() > 1 {
                 for source in &refs {
                     for target in &refs {
                         if source != target {
-                            graph.entry(source.clone()).or_default().downstream.insert(target.clone());
-                            graph.entry(target.clone()).or_default().upstream.insert(source.clone());
+                            graph
+                                .entry(source.clone())
+                                .or_default()
+                                .downstream
+                                .insert(target.clone());
+                            graph
+                                .entry(target.clone())
+                                .or_default()
+                                .upstream
+                                .insert(source.clone());
                         }
                     }
                 }
@@ -2877,7 +2931,11 @@ impl DorisClient {
             let schema = self
                 .get_table_schema_with_options(Some(db_name), table_name, Some(&effective_catalog))
                 .await?;
-            if !schema.columns.iter().any(|column| column.name == column_name) {
+            if !schema
+                .columns
+                .iter()
+                .any(|column| column.name == column_name)
+            {
                 results.insert(
                     column_spec.clone(),
                     serde_json::json!({
@@ -2887,8 +2945,7 @@ impl DorisClient {
                 continue;
             }
 
-            let target_table =
-                Self::qualified_table_name(&effective_catalog, db_name, table_name);
+            let target_table = Self::qualified_table_name(&effective_catalog, db_name, table_name);
             let mut source_chain = Vec::new();
             let mut downstream_usage = Vec::new();
             let mut transformations = BTreeSet::new();
@@ -2931,7 +2988,9 @@ impl DorisClient {
                         }));
                     }
                     if include_transformations {
-                        for transformation in Self::extract_select_transformations(&sql, column_name) {
+                        for transformation in
+                            Self::extract_select_transformations(&sql, column_name)
+                        {
                             transformations.insert(transformation);
                         }
                     }
@@ -2951,7 +3010,11 @@ impl DorisClient {
             let upstream_count = source_chain.len();
             let downstream_count = downstream_usage.len();
             let lineage_confidence = if upstream_count > 0 { "medium" } else { "low" };
-            let risk_level = if downstream_count >= 5 { "high" } else { "medium" };
+            let risk_level = if downstream_count >= 5 {
+                "high"
+            } else {
+                "medium"
+            };
             let transformation_rules = transformations.into_iter().collect::<Vec<_>>();
 
             results.insert(
@@ -3104,12 +3167,12 @@ impl DorisClient {
         let applied_max_rows = Self::normalize_max_rows(Some(requested_max_rows));
         let requested_timeout = timeout.unwrap_or(60);
         let applied_timeout = Self::normalize_timeout_secs(Some(requested_timeout));
-        let requested_return_format = return_format
-            .unwrap_or("dict")
-            .trim()
-            .to_ascii_lowercase();
+        let requested_return_format = return_format.unwrap_or("dict").trim().to_ascii_lowercase();
 
-        if !matches!(requested_return_format.as_str(), "arrow" | "pandas" | "dict") {
+        if !matches!(
+            requested_return_format.as_str(),
+            "arrow" | "pandas" | "dict"
+        ) {
             return Err(SearcherError::ApiError(format!(
                 "Unsupported return_format '{}', expected one of: arrow, pandas, dict",
                 requested_return_format
@@ -3241,21 +3304,36 @@ impl DorisClient {
             .data
             .iter()
             .map(|row| CatalogInfo {
-                catalog_id: row.get("CatalogId").and_then(|value| value.as_str()).map(|value| value.to_string()),
+                catalog_id: row
+                    .get("CatalogId")
+                    .and_then(|value| value.as_str())
+                    .map(|value| value.to_string()),
                 catalog_name: row
                     .get("CatalogName")
                     .or_else(|| row.get("Catalog"))
                     .and_then(|value| value.as_str())
                     .unwrap_or_default()
                     .to_string(),
-                type_: row.get("Type").and_then(|value| value.as_str()).map(|value| value.to_string()),
-                is_current: row.get("IsCurrent").and_then(|value| value.as_str()).map(|value| value.to_string()),
-                create_time: row.get("CreateTime").and_then(|value| value.as_str()).map(|value| value.to_string()),
+                type_: row
+                    .get("Type")
+                    .and_then(|value| value.as_str())
+                    .map(|value| value.to_string()),
+                is_current: row
+                    .get("IsCurrent")
+                    .and_then(|value| value.as_str())
+                    .map(|value| value.to_string()),
+                create_time: row
+                    .get("CreateTime")
+                    .and_then(|value| value.as_str())
+                    .map(|value| value.to_string()),
                 last_update_time: row
                     .get("LastUpdateTime")
                     .and_then(|value| value.as_str())
                     .map(|value| value.to_string()),
-                comment: row.get("Comment").and_then(|value| value.as_str()).map(|value| value.to_string()),
+                comment: row
+                    .get("Comment")
+                    .and_then(|value| value.as_str())
+                    .map(|value| value.to_string()),
             })
             .collect::<Vec<_>>();
 
@@ -3338,8 +3416,12 @@ impl DorisClient {
         let start = Instant::now();
         let rows = Self::fetch_rows(&mut conn, &sanitized_sql, timeout_secs).await?;
         let execution_time_ms = start.elapsed().as_millis() as u64;
-        let query_result =
-            Self::build_query_result(rows, &sanitized_sql, execution_time_ms, Some(DEFAULT_QUERY_MAX_ROWS));
+        let query_result = Self::build_query_result(
+            rows,
+            &sanitized_sql,
+            execution_time_ms,
+            Some(DEFAULT_QUERY_MAX_ROWS),
+        );
 
         let _ = Self::execute_session_statement(&mut conn, "SET enable_profile=false").await;
         drop(conn);
@@ -3414,10 +3496,9 @@ impl DorisClient {
             Self::validate_identifier(table_name, "table name")?;
         }
 
-        let client = self
-            .http_client
-            .as_ref()
-            .ok_or_else(|| SearcherError::ApiError("Doris HTTP client not configured".to_string()))?;
+        let client = self.http_client.as_ref().ok_or_else(|| {
+            SearcherError::ApiError("Doris HTTP client not configured".to_string())
+        })?;
         let http_url = self
             .http_url
             .as_ref()
@@ -3607,10 +3688,8 @@ impl DorisClient {
                 error: None,
             }),
             "both" => {
-                let realtime =
-                    Self::build_realtime_memory_stats(tracker_type, include_details);
-                let historical =
-                    Self::build_historical_memory_stats(tracker_names, time_range);
+                let realtime = Self::build_realtime_memory_stats(tracker_type, include_details);
+                let historical = Self::build_historical_memory_stats(tracker_names, time_range);
 
                 Ok(MemoryStatsResponse {
                     success: true,
@@ -4113,10 +4192,7 @@ impl DorisClient {
             .collect()
     }
 
-    fn metric_matches_labels(
-        labels: &BTreeMap<String, String>,
-        expected: &[(&str, &str)],
-    ) -> bool {
+    fn metric_matches_labels(labels: &BTreeMap<String, String>, expected: &[(&str, &str)]) -> bool {
         expected
             .iter()
             .all(|(key, value)| labels.get(*key).map(|item| item.as_str()) == Some(*value))
@@ -4210,7 +4286,9 @@ impl DorisClient {
             Some(MonitoringMetricValue::Samples(samples)) => Some(
                 samples
                     .iter()
-                    .filter(|sample| sample.labels.get("device").map(|value| value.as_str()) != Some("lo"))
+                    .filter(|sample| {
+                        sample.labels.get("device").map(|value| value.as_str()) != Some("lo")
+                    })
                     .map(|sample| sample.value)
                     .sum(),
             ),
@@ -4226,9 +4304,11 @@ impl DorisClient {
         if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_query_total", &[]) {
             dashboard.insert("query_total_rate".to_string(), value);
         }
-        if let Some(value) =
-            Self::simple_metric_value(metrics, "doris_fe_query_latency_ms", &[("quantile", "0.99")])
-        {
+        if let Some(value) = Self::simple_metric_value(
+            metrics,
+            "doris_fe_query_latency_ms",
+            &[("quantile", "0.99")],
+        ) {
             dashboard.insert("query_latency_99p_ms".to_string(), value);
         }
         if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_query_err", &[]) {
@@ -4241,61 +4321,88 @@ impl DorisClient {
         if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_request_total", &[]) {
             dashboard.insert("request_total_rate".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "jvm_heap_size_bytes", &[("type", "used")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "jvm_heap_size_bytes", &[("type", "used")])
+        {
             dashboard.insert("jvm_heap_used_bytes".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "jvm_heap_size_bytes", &[("type", "max")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "jvm_heap_size_bytes", &[("type", "max")])
+        {
             dashboard.insert("jvm_heap_max_bytes".to_string(), value);
         }
         if let Some(value) = Self::calculate_jvm_heap_usage_percent(metrics) {
             dashboard.insert("jvm_heap_usage_percent".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "jvm_old_gc", &[("type", "count")]) {
+        if let Some(value) = Self::simple_metric_value(metrics, "jvm_old_gc", &[("type", "count")])
+        {
             dashboard.insert("jvm_old_gc_count".to_string(), value);
         }
         if let Some(value) = Self::calculate_gc_average_time(metrics, "jvm_old_gc") {
             dashboard.insert("jvm_old_gc_avg_time".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "jvm_young_gc", &[("type", "count")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "jvm_young_gc", &[("type", "count")])
+        {
             dashboard.insert("jvm_young_gc_count".to_string(), value);
         }
         if let Some(value) = Self::calculate_gc_average_time(metrics, "jvm_young_gc") {
             dashboard.insert("jvm_young_gc_avg_time".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_tablet_max_compaction_score", &[]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_fe_tablet_max_compaction_score", &[])
+        {
             dashboard.insert("tablet_max_compaction_score".to_string(), value);
         }
-        if let Some(value) =
-            Self::simple_metric_value(metrics, "doris_fe_tablet_status_count", &[("type", "unhealthy")])
-        {
+        if let Some(value) = Self::simple_metric_value(
+            metrics,
+            "doris_fe_tablet_status_count",
+            &[("type", "unhealthy")],
+        ) {
             dashboard.insert("tablet_unhealthy_count".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_scheduled_tablet_num", &[]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_fe_scheduled_tablet_num", &[])
+        {
             dashboard.insert("tablet_scheduled_num".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_txn_counter", &[("type", "begin")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_fe_txn_counter", &[("type", "begin")])
+        {
             dashboard.insert("txn_begin_total".to_string(), value);
             dashboard.insert("txn_begin_rate".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_txn_counter", &[("type", "success")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_fe_txn_counter", &[("type", "success")])
+        {
             dashboard.insert("txn_success_total".to_string(), value);
             dashboard.insert("txn_success_rate".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_txn_counter", &[("type", "reject")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_fe_txn_counter", &[("type", "reject")])
+        {
             dashboard.insert("txn_reject_rate".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_txn_counter", &[("type", "failed")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_fe_txn_counter", &[("type", "failed")])
+        {
             dashboard.insert("txn_failed_rate".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_edit_log", &[("type", "write")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_fe_edit_log", &[("type", "write")])
+        {
             dashboard.insert("edit_log_write_rate".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_edit_log", &[("type", "read")]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_fe_edit_log", &[("type", "read")])
+        {
             dashboard.insert("edit_log_read_rate".to_string(), value);
         }
-        if let Some(value) =
-            Self::simple_metric_value(metrics, "doris_fe_editlog_write_latency_ms", &[("quantile", "0.99")])
-        {
+        if let Some(value) = Self::simple_metric_value(
+            metrics,
+            "doris_fe_editlog_write_latency_ms",
+            &[("quantile", "0.99")],
+        ) {
             dashboard.insert("edit_log_write_latency_99p_ms".to_string(), value);
         }
         if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_report_queue_size", &[]) {
@@ -4310,9 +4417,11 @@ impl DorisClient {
     ) -> BTreeMap<String, f64> {
         let mut dashboard = BTreeMap::new();
 
-        if let Some(value) =
-            Self::simple_metric_value(metrics, "doris_be_stream_load", &[("type", "receive_bytes")])
-        {
+        if let Some(value) = Self::simple_metric_value(
+            metrics,
+            "doris_be_stream_load",
+            &[("type", "receive_bytes")],
+        ) {
             dashboard.insert("stream_load_receive_bytes_rate".to_string(), value);
         }
         if let Some(value) =
@@ -4320,7 +4429,9 @@ impl DorisClient {
         {
             dashboard.insert("stream_load_rows_rate".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_be_stream_load_txn_request", &[]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_be_stream_load_txn_request", &[])
+        {
             dashboard.insert("stream_load_txn_request_rate".to_string(), value);
         }
         if let Some(value) = Self::simple_metric_value(
@@ -4337,16 +4448,22 @@ impl DorisClient {
         ) {
             dashboard.insert("engine_publish_failed_rate".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_be_disks_local_used_capacity", &[]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_be_disks_local_used_capacity", &[])
+        {
             dashboard.insert("disks_used_capacity_bytes".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_be_disks_total_capacity", &[]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_be_disks_total_capacity", &[])
+        {
             dashboard.insert("disks_total_capacity_bytes".to_string(), value);
         }
         if let Some(value) = Self::calculate_disk_usage_percent(metrics) {
             dashboard.insert("disks_usage_percent".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_be_memory_allocated_bytes", &[]) {
+        if let Some(value) =
+            Self::simple_metric_value(metrics, "doris_be_memory_allocated_bytes", &[])
+        {
             dashboard.insert("memory_allocated_bytes".to_string(), value);
         }
         if let Some(value) =
@@ -4369,7 +4486,8 @@ impl DorisClient {
         {
             dashboard.insert("process_fd_num_limit_soft".to_string(), value);
         }
-        if let Some(value) = Self::simple_metric_value(metrics, "doris_be_process_fd_num_used", &[]) {
+        if let Some(value) = Self::simple_metric_value(metrics, "doris_be_process_fd_num_used", &[])
+        {
             dashboard.insert("process_fd_num_used".to_string(), value);
         }
         if let Some(value) = Self::calculate_fd_usage_percent(
@@ -4382,7 +4500,9 @@ impl DorisClient {
         if let Some(value) = Self::calculate_cpu_usage_percent(metrics, "doris_be_cpu") {
             dashboard.insert("cpu_usage_percent".to_string(), value);
         }
-        if let Some(value) = Self::aggregate_network_bytes(metrics, "doris_be_network_receive_bytes") {
+        if let Some(value) =
+            Self::aggregate_network_bytes(metrics, "doris_be_network_receive_bytes")
+        {
             dashboard.insert("network_receive_bytes_total".to_string(), value);
         }
         if let Some(value) = Self::aggregate_network_bytes(metrics, "doris_be_network_send_bytes") {
@@ -4415,7 +4535,9 @@ impl DorisClient {
                     );
                 }
             }
-            if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_connection_total", &[]) {
+            if let Some(value) =
+                Self::simple_metric_value(metrics, "doris_fe_connection_total", &[])
+            {
                 summary.insert("current_connections".to_string(), serde_json::json!(value));
             }
             if let Some(value) =
@@ -4423,7 +4545,9 @@ impl DorisClient {
             {
                 summary.insert("max_compaction_score".to_string(), serde_json::json!(value));
             }
-            if let Some(value) = Self::simple_metric_value(metrics, "doris_fe_report_queue_size", &[]) {
+            if let Some(value) =
+                Self::simple_metric_value(metrics, "doris_fe_report_queue_size", &[])
+            {
                 summary.insert("report_queue_size".to_string(), serde_json::json!(value));
             }
             serde_json::Value::Object(summary)
@@ -4432,7 +4556,9 @@ impl DorisClient {
             if let Some(value) = Self::calculate_cpu_usage_percent(metrics, "doris_be_cpu") {
                 summary.insert("cpu_usage_percent".to_string(), serde_json::json!(value));
             }
-            if let Some(value) = Self::simple_metric_value(metrics, "doris_be_memory_allocated_bytes", &[]) {
+            if let Some(value) =
+                Self::simple_metric_value(metrics, "doris_be_memory_allocated_bytes", &[])
+            {
                 summary.insert(
                     "memory_allocated_gb".to_string(),
                     serde_json::json!(((value / 1024f64.powi(3)) * 100.0).round() / 100.0),
@@ -4448,7 +4574,9 @@ impl DorisClient {
             ) {
                 summary.insert("fd_usage_percent".to_string(), serde_json::json!(value));
             }
-            if let Some(value) = Self::simple_metric_value(metrics, "doris_be_process_thread_num", &[]) {
+            if let Some(value) =
+                Self::simple_metric_value(metrics, "doris_be_process_thread_num", &[])
+            {
                 summary.insert("thread_count".to_string(), serde_json::json!(value));
             }
             serde_json::Value::Object(summary)
@@ -4459,10 +4587,9 @@ impl DorisClient {
         &self,
         url: &str,
     ) -> Result<BTreeMap<String, MonitoringMetricValue>, SearcherError> {
-        let client = self
-            .http_client
-            .as_ref()
-            .ok_or_else(|| SearcherError::ApiError("Doris HTTP client not configured".to_string()))?;
+        let client = self.http_client.as_ref().ok_or_else(|| {
+            SearcherError::ApiError("Doris HTTP client not configured".to_string())
+        })?;
         let response = client
             .get(url)
             .basic_auth(&self.username, Some(&self.password))
@@ -4515,10 +4642,9 @@ impl DorisClient {
             .http_url
             .as_ref()
             .ok_or_else(|| SearcherError::ApiError("Doris HTTP URL not configured".to_string()))?;
-        let client = self
-            .http_client
-            .as_ref()
-            .ok_or_else(|| SearcherError::ApiError("Doris HTTP client not configured".to_string()))?;
+        let client = self.http_client.as_ref().ok_or_else(|| {
+            SearcherError::ApiError("Doris HTTP client not configured".to_string())
+        })?;
         let url = format!("{}/api/backends", http_url.trim_end_matches('/'));
         let response = client
             .get(&url)
@@ -4758,7 +4884,8 @@ impl DorisClient {
         monitor_type: &str,
         priority: &str,
     ) -> (serde_json::Value, Option<String>) {
-        let (definitions, note) = Self::monitoring_definitions_for_scope(role, monitor_type, priority);
+        let (definitions, note) =
+            Self::monitoring_definitions_for_scope(role, monitor_type, priority);
         if priority == "core" {
             return (Self::to_json_value(&definitions), note);
         }
@@ -4766,31 +4893,56 @@ impl DorisClient {
         let mut payload = serde_json::Map::new();
         if role == "fe" || role == "all" {
             if monitor_type == "process" {
-                payload.insert("fe_process_p0_metrics".to_string(), Self::to_json_value(&definitions));
+                payload.insert(
+                    "fe_process_p0_metrics".to_string(),
+                    Self::to_json_value(&definitions),
+                );
             } else if monitor_type == "jvm" {
-                payload.insert("fe_jvm_p0_metrics".to_string(), Self::to_json_value(&definitions));
+                payload.insert(
+                    "fe_jvm_p0_metrics".to_string(),
+                    Self::to_json_value(&definitions),
+                );
             } else if monitor_type == "machine" {
-                payload.insert("fe_machine_p0_metrics".to_string(), Self::to_json_value(&definitions));
+                payload.insert(
+                    "fe_machine_p0_metrics".to_string(),
+                    Self::to_json_value(&definitions),
+                );
             } else {
-                let (fe_definitions, _) = Self::monitoring_definitions_for_scope("fe", "all", priority);
-                payload.insert("fe_p0_metrics".to_string(), Self::to_json_value(&fe_definitions));
+                let (fe_definitions, _) =
+                    Self::monitoring_definitions_for_scope("fe", "all", priority);
+                payload.insert(
+                    "fe_p0_metrics".to_string(),
+                    Self::to_json_value(&fe_definitions),
+                );
             }
         }
         if role == "be" || role == "all" {
             if monitor_type == "process" {
-                let (be_definitions, _) = Self::monitoring_definitions_for_scope("be", "process", priority);
-                payload.insert("be_process_p0_metrics".to_string(), Self::to_json_value(&be_definitions));
+                let (be_definitions, _) =
+                    Self::monitoring_definitions_for_scope("be", "process", priority);
+                payload.insert(
+                    "be_process_p0_metrics".to_string(),
+                    Self::to_json_value(&be_definitions),
+                );
             } else if monitor_type == "jvm" {
                 payload.insert(
                     "be_jvm_info".to_string(),
                     serde_json::json!("BE nodes do not have JVM metrics"),
                 );
             } else if monitor_type == "machine" {
-                let (be_definitions, _) = Self::monitoring_definitions_for_scope("be", "machine", priority);
-                payload.insert("be_machine_p0_metrics".to_string(), Self::to_json_value(&be_definitions));
+                let (be_definitions, _) =
+                    Self::monitoring_definitions_for_scope("be", "machine", priority);
+                payload.insert(
+                    "be_machine_p0_metrics".to_string(),
+                    Self::to_json_value(&be_definitions),
+                );
             } else {
-                let (be_definitions, _) = Self::monitoring_definitions_for_scope("be", "all", priority);
-                payload.insert("be_p0_metrics".to_string(), Self::to_json_value(&be_definitions));
+                let (be_definitions, _) =
+                    Self::monitoring_definitions_for_scope("be", "all", priority);
+                payload.insert(
+                    "be_p0_metrics".to_string(),
+                    Self::to_json_value(&be_definitions),
+                );
             }
         }
 
@@ -4906,11 +5058,13 @@ impl DorisClient {
         })
     }
 
-    async fn get_query_id_by_trace_id(&self, trace_id: &str) -> Result<Option<String>, SearcherError> {
-        let client = self
-            .http_client
-            .as_ref()
-            .ok_or_else(|| SearcherError::ApiError("Doris HTTP client not configured".to_string()))?;
+    async fn get_query_id_by_trace_id(
+        &self,
+        trace_id: &str,
+    ) -> Result<Option<String>, SearcherError> {
+        let client = self.http_client.as_ref().ok_or_else(|| {
+            SearcherError::ApiError("Doris HTTP client not configured".to_string())
+        })?;
         let http_url = self
             .http_url
             .as_ref()
@@ -4936,11 +5090,17 @@ impl DorisClient {
                         if let Some(query_id) = data.as_str() {
                             return Ok(Some(query_id.to_string()));
                         }
-                        if let Some(query_id) = data.get("query_id").and_then(|value| value.as_str()) {
+                        if let Some(query_id) =
+                            data.get("query_id").and_then(|value| value.as_str())
+                        {
                             return Ok(Some(query_id.to_string()));
                         }
-                        if let Some(query_ids) = data.get("query_ids").and_then(|value| value.as_array()) {
-                            if let Some(query_id) = query_ids.first().and_then(|value| value.as_str()) {
+                        if let Some(query_ids) =
+                            data.get("query_ids").and_then(|value| value.as_array())
+                        {
+                            if let Some(query_id) =
+                                query_ids.first().and_then(|value| value.as_str())
+                            {
                                 return Ok(Some(query_id.to_string()));
                             }
                         }
@@ -4971,10 +5131,9 @@ impl DorisClient {
         &self,
         query_id: &str,
     ) -> Result<Option<(String, String, String)>, SearcherError> {
-        let client = self
-            .http_client
-            .as_ref()
-            .ok_or_else(|| SearcherError::ApiError("Doris HTTP client not configured".to_string()))?;
+        let client = self.http_client.as_ref().ok_or_else(|| {
+            SearcherError::ApiError("Doris HTTP client not configured".to_string())
+        })?;
         let http_url = self
             .http_url
             .as_ref()
@@ -5026,7 +5185,9 @@ impl DorisClient {
                             }
                         }
                     }
-                } else if !body.trim().is_empty() && !body.to_ascii_lowercase().contains("not found") {
+                } else if !body.trim().is_empty()
+                    && !body.to_ascii_lowercase().contains("not found")
+                {
                     return Ok(Some((body, url, chrono::Utc::now().to_rfc3339())));
                 }
             }
@@ -5208,9 +5369,15 @@ impl DorisClient {
                     job_id: row.get("JobId")?.as_str()?.to_string(),
                     label: row.get("Label")?.as_str()?.to_string(),
                     state: row.get("State")?.as_str()?.to_string(),
-                    progress: row.get("Progress").and_then(|v| v.as_str().map(|s| s.to_string())),
-                    load_type: row.get("Type").and_then(|v| v.as_str().map(|s| s.to_string())),
-                    create_time: row.get("CreateTime").and_then(|v| v.as_str().map(|s| s.to_string())),
+                    progress: row
+                        .get("Progress")
+                        .and_then(|v| v.as_str().map(|s| s.to_string())),
+                    load_type: row
+                        .get("Type")
+                        .and_then(|v| v.as_str().map(|s| s.to_string())),
+                    create_time: row
+                        .get("CreateTime")
+                        .and_then(|v| v.as_str().map(|s| s.to_string())),
                 })
             })
             .collect();
@@ -5717,7 +5884,10 @@ mod tests {
             Some("internal"),
             Some("warehouse"),
         );
-        assert_eq!(create_target, Some("internal.mart.daily_orders".to_string()));
+        assert_eq!(
+            create_target,
+            Some("internal.mart.daily_orders".to_string())
+        );
     }
 
     #[test]
@@ -5875,8 +6045,14 @@ mod tests {
         match client.get_tables(&std::env::var("DORIS_DB").unwrap()).await {
             Ok(tables_resp) => {
                 if let Some(first_table) = tables_resp.tables.first() {
-                    match client.get_table_schema(&std::env::var("DORIS_DB").unwrap(), first_table).await {
-                        Ok(schema) => println!("   ✓ Table {} has {} columns", first_table, schema.column_count),
+                    match client
+                        .get_table_schema(&std::env::var("DORIS_DB").unwrap(), first_table)
+                        .await
+                    {
+                        Ok(schema) => println!(
+                            "   ✓ Table {} has {} columns",
+                            first_table, schema.column_count
+                        ),
                         Err(e) => println!("   ✗ Failed: {}", e),
                     }
                 } else {
@@ -5891,8 +6067,15 @@ mod tests {
         match client.get_tables(&std::env::var("DORIS_DB").unwrap()).await {
             Ok(tables_resp) => {
                 if let Some(first_table) = tables_resp.tables.first() {
-                    match client.get_table_metadata(&std::env::var("DORIS_DB").unwrap(), first_table).await {
-                        Ok(metadata) => println!("   ✓ Table {} metadata: {} rows", first_table, metadata.row_count.unwrap_or(0)),
+                    match client
+                        .get_table_metadata(&std::env::var("DORIS_DB").unwrap(), first_table)
+                        .await
+                    {
+                        Ok(metadata) => println!(
+                            "   ✓ Table {} metadata: {} rows",
+                            first_table,
+                            metadata.row_count.unwrap_or(0)
+                        ),
                         Err(e) => println!("   ✗ Failed: {}", e),
                     }
                 }
@@ -5903,14 +6086,20 @@ mod tests {
         // Test 5: get_fe_status
         println!("5. Testing get_fe_status()...");
         match client.get_fe_status().await {
-            Ok(response) => println!("   ✓ FE status: {}, name: {:?}", response.status, response.name),
+            Ok(response) => println!(
+                "   ✓ FE status: {}, name: {:?}",
+                response.status, response.name
+            ),
             Err(e) => println!("   ✗ Failed: {}", e),
         }
 
         // Test 6: get_be_status
         println!("6. Testing get_be_status()...");
         match client.get_be_status().await {
-            Ok(response) => println!("   ✓ BE status: {}/{} alive", response.alive, response.total),
+            Ok(response) => println!(
+                "   ✓ BE status: {}/{} alive",
+                response.alive, response.total
+            ),
             Err(e) => println!("   ✗ Failed: {}", e),
         }
 
@@ -5918,9 +6107,15 @@ mod tests {
         println!("7. Testing get_query_stats()...");
         match client.execute_query("SHOW QUERY STATS").await {
             Ok(result) => {
-                println!("      Raw result: {} rows, columns: {:?}", result.row_count, result.columns);
+                println!(
+                    "      Raw result: {} rows, columns: {:?}",
+                    result.row_count, result.columns
+                );
                 if let Some(first_row) = result.data.first() {
-                    println!("      First row keys: {:?}", first_row.keys().collect::<Vec<_>>());
+                    println!(
+                        "      First row keys: {:?}",
+                        first_row.keys().collect::<Vec<_>>()
+                    );
                 }
             }
             Err(e) => println!("   ✗ Failed: {}", e),
@@ -5939,11 +6134,23 @@ mod tests {
 
         // Test 9: get_load_jobs
         println!("9. Testing get_load_jobs()...");
-        match client.execute_query(&format!("SHOW LOAD FROM {} LIMIT 1", std::env::var("DORIS_DB").unwrap())).await {
+        match client
+            .execute_query(&format!(
+                "SHOW LOAD FROM {} LIMIT 1",
+                std::env::var("DORIS_DB").unwrap()
+            ))
+            .await
+        {
             Ok(result) => {
-                println!("      Raw SHOW LOAD result (limited): {} rows, columns: {:?}", result.row_count, result.columns);
+                println!(
+                    "      Raw SHOW LOAD result (limited): {} rows, columns: {:?}",
+                    result.row_count, result.columns
+                );
                 if let Some(first_row) = result.data.first() {
-                    println!("      First row keys: {:?}", first_row.keys().collect::<Vec<_>>());
+                    println!(
+                        "      First row keys: {:?}",
+                        first_row.keys().collect::<Vec<_>>()
+                    );
                 }
             }
             Err(e) => println!("   ✗ Failed: {}", e),

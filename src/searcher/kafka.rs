@@ -1,17 +1,17 @@
+use crate::searcher::SearcherError;
 use rdkafka::{
+    Message,
     admin::{AdminClient, AdminOptions, NewTopic, TopicReplication},
     client::DefaultClientContext,
     config::ClientConfig,
     consumer::{Consumer, DefaultConsumerContext, StreamConsumer},
-    message::{Headers, OwnedHeaders, Header as KafkaHeader},
+    message::{Header as KafkaHeader, Headers, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
-    Message,
 };
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
-use uuid::Uuid;
 use tokio::time::timeout as tokio_timeout;
-use crate::searcher::SearcherError;
+use uuid::Uuid;
 
 /// Kafka 客户端
 pub struct KafkaClient {
@@ -123,7 +123,9 @@ impl KafkaClient {
         let results = admin
             .create_topics([&new_topic], &opts)
             .await
-            .map_err(|e| SearcherError::Other(format!("Failed to send create topic request: {}", e)))?;
+            .map_err(|e| {
+                SearcherError::Other(format!("Failed to send create topic request: {}", e))
+            })?;
 
         if results.is_empty() {
             return Ok(format!("Topic '{}' created successfully", topic));
@@ -167,10 +169,9 @@ impl KafkaClient {
 
         let opts = AdminOptions::new().request_timeout(Some(Duration::from_secs(3)));
 
-        let results = admin
-            .delete_topics(&[topic], &opts)
-            .await
-            .map_err(|e| SearcherError::Other(format!("Failed to send delete topic request: {}", e)))?;
+        let results = admin.delete_topics(&[topic], &opts).await.map_err(|e| {
+            SearcherError::Other(format!("Failed to send delete topic request: {}", e))
+        })?;
 
         if results.is_empty() {
             return Ok(format!("Topic '{}' deleted successfully", topic));
@@ -236,7 +237,10 @@ impl KafkaClient {
         let owned_headers = if let Some(header_list) = headers {
             let mut oh = OwnedHeaders::new();
             for (k, v) in header_list {
-                oh = oh.insert(KafkaHeader { key: k.as_str(), value: Some(v.as_bytes()) });
+                oh = oh.insert(KafkaHeader {
+                    key: k.as_str(),
+                    value: Some(v.as_bytes()),
+                });
             }
             oh
         } else {
@@ -286,7 +290,9 @@ impl KafkaClient {
             match tokio_timeout(Duration::from_secs(1), consumer.recv()).await {
                 Ok(Ok(msg)) => {
                     let key = msg.key().map(|k| String::from_utf8_lossy(k).to_string());
-                    let payload = msg.payload().map(|p| String::from_utf8_lossy(p).to_string());
+                    let payload = msg
+                        .payload()
+                        .map(|p| String::from_utf8_lossy(p).to_string());
 
                     // 提取 headers
                     let headers = if let Some(h) = msg.headers() {
@@ -294,11 +300,11 @@ impl KafkaClient {
                         let count: usize = h.count();
                         for i in 0..count {
                             let header = h.get(i);
-                            let value = header.value.map(|v| String::from_utf8_lossy(v).to_string()).unwrap_or_default();
-                            header_vec.push((
-                                header.key.to_string(),
-                                value,
-                            ));
+                            let value = header
+                                .value
+                                .map(|v| String::from_utf8_lossy(v).to_string())
+                                .unwrap_or_default();
+                            header_vec.push((header.key.to_string(), value));
                         }
                         Some(header_vec)
                     } else {
