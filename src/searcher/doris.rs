@@ -2,7 +2,7 @@
 //!
 //! Provides MCP tools for querying Apache Doris database
 
-use super::SearcherError;
+use super::{SearcherError, global_http_ssl_verify, new_shared_http_client};
 use chrono::Timelike;
 use serde::{Deserialize, Serialize};
 use sqlx::{
@@ -77,7 +77,9 @@ impl DorisClient {
             database,
             default_catalog: DEFAULT_DORIS_CATALOG.to_string(),
             http_url: http_url.clone(),
-            http_client: http_url.is_some().then(reqwest::Client::new),
+            http_client: http_url
+                .is_some()
+                .then(|| new_shared_http_client(global_http_ssl_verify())),
         }
     }
 

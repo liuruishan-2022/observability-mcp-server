@@ -1,4 +1,4 @@
-use crate::searcher::SearcherError;
+use crate::searcher::{SearcherError, global_http_ssl_verify, new_shared_http_client};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -19,9 +19,7 @@ impl NacosClient {
     /// - `base_url`: Nacos 服务器的基础 URL (例如: http://localhost:8848)
     /// - `access_token`: 访问令牌（可选，从 /nacos/v3/auth/user/login 获取）
     pub fn new(base_url: String, access_token: Option<String>) -> Self {
-        let client = Client::builder()
-            .build()
-            .expect("Failed to create HTTP client");
+        let client = new_shared_http_client(global_http_ssl_verify());
 
         // 移除末尾的斜杠
         let base_url = base_url.trim_end_matches('/').to_string();

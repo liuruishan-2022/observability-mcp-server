@@ -1,11 +1,11 @@
-use super::SearcherError;
+use super::{SearcherError, build_shared_http_client_with_headers};
 use base64::Engine;
 use chrono::{DateTime, FixedOffset, NaiveDate, TimeZone};
 use pulldown_cmark::{Options, Parser, html};
 use reqwest::Method;
 use reqwest::{
     Client, RequestBuilder,
-    header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, USER_AGENT},
+    header::{ACCEPT, HeaderMap, HeaderValue, USER_AGENT},
     multipart::{Form, Part},
 };
 use serde_json::{Map, Value, json};
@@ -13,10 +13,10 @@ use std::{
     cmp::Reverse,
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
-    time::Duration,
 };
 use tokio::fs;
 
+#[derive(Clone)]
 pub enum AtlassianAuth {
     Basic { username: String, token: String },
     Bearer { token: String },
@@ -31,35 +31,23 @@ pub fn is_cloud_url(url: &str) -> bool {
     normalized.contains(".atlassian.net") || normalized.contains("api.atlassian.com")
 }
 
-pub fn build_http_client(auth: AtlassianAuth, ssl_verify: bool) -> Result<Client, SearcherError> {
+pub fn build_http_client(ssl_verify: bool) -> Result<Client, SearcherError> {
     let mut headers = HeaderMap::new();
-    headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
     headers.insert(
         USER_AGENT,
         HeaderValue::from_static("observability-mcp-server/0.5.0"),
     );
 
-    let auth_value = match auth {
+    build_shared_http_client_with_headers(ssl_verify, headers)
+}
+
+fn apply_auth(request: RequestBuilder, auth: &AtlassianAuth) -> RequestBuilder {
+    match auth {
         AtlassianAuth::Basic { username, token } => {
-            let encoded =
-                base64::engine::general_purpose::STANDARD.encode(format!("{}:{}", username, token));
-            format!("Basic {}", encoded)
+            request.basic_auth(username.as_str(), Some(token.as_str()))
         }
-        AtlassianAuth::Bearer { token } => format!("Bearer {}", token),
-    };
-
-    let header_value = HeaderValue::from_str(&auth_value)
-        .map_err(|e| SearcherError::Other(format!("invalid auth header value: {}", e)))?;
-    headers.insert(AUTHORIZATION, header_value);
-
-    Client::builder()
-        .danger_accept_invalid_certs(!ssl_verify)
-        .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(30))
-        .default_headers(headers)
-        .build()
-        .map_err(SearcherError::RequestError)
+        AtlassianAuth::Bearer { token } => request.bearer_auth(token.as_str()),
+    }
 }
 
 pub async fn send_json(request: RequestBuilder) -> Result<Value, SearcherError> {
@@ -293,6 +281,7 @@ const DEFAULT_READ_FIELDS: &[&str] = &[
 
 pub struct JiraClient {
     client: reqwest::Client,
+    auth: AtlassianAuth,
     base_url: String,
     api_version: &'static str,
     is_cloud: bool,
@@ -330,7 +319,8 @@ impl JiraClient {
         };
 
         Ok(Self {
-            client: build_http_client(auth, ssl_verify)?,
+            client: build_http_client(ssl_verify)?,
+            auth: auth.clone(),
             base_url,
             api_version: if is_cloud { "3" } else { "2" },
             is_cloud,
@@ -2297,7 +2287,8 @@ impl JiraClient {
         query: Option<Vec<(String, String)>>,
         body: Option<Value>,
     ) -> Result<Value, SearcherError> {
-        let mut request = self.client.request(method, self.api_url(path));
+        let mut request = apply_auth(self.client.request(method, self.api_url(path)), &self.auth)
+            .header(ACCEPT, HeaderValue::from_static("application/json"));
         if let Some(query) = query.filter(|items| !items.is_empty()) {
             request = request.query(&query);
         }
@@ -2314,7 +2305,8 @@ impl JiraClient {
         query: Option<Vec<(String, String)>>,
         body: Option<Value>,
     ) -> Result<(), SearcherError> {
-        let mut request = self.client.request(method, self.api_url(path));
+        let mut request = apply_auth(self.client.request(method, self.api_url(path)), &self.auth)
+            .header(ACCEPT, HeaderValue::from_static("application/json"));
         if let Some(query) = query.filter(|items| !items.is_empty()) {
             request = request.query(&query);
         }
@@ -2330,8 +2322,7 @@ impl JiraClient {
         url: &str,
     ) -> Result<Vec<u8>, SearcherError> {
         send_bytes(
-            self.client
-                .request(method, url)
+            apply_auth(self.client.request(method, url), &self.auth)
                 .header(ACCEPT, HeaderValue::from_static("*/*")),
         )
         .await
@@ -2344,14 +2335,18 @@ impl JiraClient {
         query: Option<Vec<(String, String)>>,
         body: Option<Value>,
     ) -> Result<Value, SearcherError> {
-        let mut request = self.client.request(
-            method,
-            format!(
-                "{}/rest/agile/1.0/{}",
-                self.base_url,
-                path.trim_start_matches('/')
+        let mut request = apply_auth(
+            self.client.request(
+                method,
+                format!(
+                    "{}/rest/agile/1.0/{}",
+                    self.base_url,
+                    path.trim_start_matches('/')
+                ),
             ),
-        );
+            &self.auth,
+        )
+        .header(ACCEPT, HeaderValue::from_static("application/json"));
         if let Some(query) = query.filter(|items| !items.is_empty()) {
             request = request.query(&query);
         }
@@ -2368,14 +2363,18 @@ impl JiraClient {
         query: Option<Vec<(String, String)>>,
         body: Option<Value>,
     ) -> Result<Value, SearcherError> {
-        let mut request = self.client.request(
-            method,
-            format!(
-                "{}/rest/servicedeskapi/{}",
-                self.base_url,
-                path.trim_start_matches('/')
+        let mut request = apply_auth(
+            self.client.request(
+                method,
+                format!(
+                    "{}/rest/servicedeskapi/{}",
+                    self.base_url,
+                    path.trim_start_matches('/')
+                ),
             ),
-        );
+            &self.auth,
+        )
+        .header(ACCEPT, HeaderValue::from_static("application/json"));
         if let Some(query) = query.filter(|items| !items.is_empty()) {
             request = request.query(&query);
         }
@@ -2393,18 +2392,22 @@ impl JiraClient {
     ) -> Result<Value, SearcherError> {
         let cloud_id = std::env::var("ATLASSIAN_OAUTH_CLOUD_ID")
             .map_err(|_| SearcherError::EnvVarNotSet("ATLASSIAN_OAUTH_CLOUD_ID".to_string()))?;
-        let mut request = self.client.request(
-            method,
-            format!(
-                "https://api.atlassian.com/jira/forms/cloud/{}{}",
-                cloud_id,
-                if endpoint.starts_with('/') {
-                    endpoint.to_string()
-                } else {
-                    format!("/{}", endpoint)
-                }
+        let mut request = apply_auth(
+            self.client.request(
+                method,
+                format!(
+                    "https://api.atlassian.com/jira/forms/cloud/{}{}",
+                    cloud_id,
+                    if endpoint.starts_with('/') {
+                        endpoint.to_string()
+                    } else {
+                        format!("/{}", endpoint)
+                    }
+                ),
             ),
-        );
+            &self.auth,
+        )
+        .header(ACCEPT, HeaderValue::from_static("application/json"));
         if let Some(body) = body {
             request = request.json(&body);
         }
@@ -2557,6 +2560,7 @@ fn parse_time_spent(time_spent: &str) -> u64 {
 
 pub struct ConfluenceClient {
     client: reqwest::Client,
+    auth: AtlassianAuth,
     base_url: String,
     is_cloud: bool,
     spaces_filter: Option<String>,
@@ -2591,7 +2595,8 @@ impl ConfluenceClient {
         };
 
         Ok(Self {
-            client: build_http_client(auth, ssl_verify)?,
+            client: build_http_client(ssl_verify)?,
+            auth: auth.clone(),
             base_url,
             is_cloud,
             spaces_filter,
@@ -3038,13 +3043,19 @@ impl ConfluenceClient {
             ));
         }
 
-        let views = send_json(self.client.request(
-            Method::GET,
-            format!(
-                "{}/rest/api/analytics/content/{}/views",
-                self.base_url, page_id
-            ),
-        ))
+        let views = send_json(
+            apply_auth(
+                self.client.request(
+                    Method::GET,
+                    format!(
+                        "{}/rest/api/analytics/content/{}/views",
+                        self.base_url, page_id
+                    ),
+                ),
+                &self.auth,
+            )
+            .header(ACCEPT, HeaderValue::from_static("application/json")),
+        )
         .await?;
 
         if include_title {
@@ -3334,16 +3345,19 @@ impl ConfluenceClient {
         );
 
         let response = send_json(
-            self.client
-                .request(
+            apply_auth(
+                self.client.request(
                     Method::PUT,
                     format!(
                         "{}/rest/api/content/{}/child/attachment",
                         self.base_url, content_id
                     ),
-                )
-                .header("X-Atlassian-Token", "nocheck")
-                .multipart(form),
+                ),
+                &self.auth,
+            )
+            .header(ACCEPT, HeaderValue::from_static("application/json"))
+            .header("X-Atlassian-Token", "nocheck")
+            .multipart(form),
         )
         .await?;
 
@@ -3715,7 +3729,8 @@ impl ConfluenceClient {
         query: Option<Vec<(String, String)>>,
         body: Option<Value>,
     ) -> Result<Value, SearcherError> {
-        let mut request = self.client.request(method, self.api_url(path));
+        let mut request = apply_auth(self.client.request(method, self.api_url(path)), &self.auth)
+            .header(ACCEPT, HeaderValue::from_static("application/json"));
         if let Some(query) = query.filter(|items| !items.is_empty()) {
             request = request.query(&query);
         }
@@ -3732,7 +3747,8 @@ impl ConfluenceClient {
         query: Option<Vec<(String, String)>>,
         body: Option<Value>,
     ) -> Result<(), SearcherError> {
-        let mut request = self.client.request(method, self.api_url(path));
+        let mut request = apply_auth(self.client.request(method, self.api_url(path)), &self.auth)
+            .header(ACCEPT, HeaderValue::from_static("application/json"));
         if let Some(query) = query.filter(|items| !items.is_empty()) {
             request = request.query(&query);
         }
@@ -3748,8 +3764,7 @@ impl ConfluenceClient {
         url: &str,
     ) -> Result<Vec<u8>, SearcherError> {
         send_bytes(
-            self.client
-                .request(method, url)
+            apply_auth(self.client.request(method, url), &self.auth)
                 .header(ACCEPT, HeaderValue::from_static("*/*")),
         )
         .await
@@ -4110,4 +4125,136 @@ fn detect_image_mime(media_type: Option<&str>, filename: Option<&str>) -> Option
         _ => return None,
     };
     Some(mime.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+    use std::env;
+
+    fn build_confluence_request(client: &ConfluenceClient) -> reqwest::Request {
+        let query = vec![
+            ("cql".to_string(), "siteSearch ~ \"test\"".to_string()),
+            ("limit".to_string(), "1".to_string()),
+            (
+                "expand".to_string(),
+                "space,version,history.lastUpdated".to_string(),
+            ),
+        ];
+
+        let mut request = apply_auth(
+            client
+                .client
+                .request(Method::GET, client.api_url("content/search")),
+            &client.auth,
+        )
+        .header(ACCEPT, HeaderValue::from_static("application/json"));
+        request = request.query(&query);
+        request.build().expect("request should build")
+    }
+
+    #[test]
+    fn confluence_personal_token_uses_bearer_auth() {
+        let client = ConfluenceClient::new(
+            "https://wiki.xwwxkj.com".to_string(),
+            Some("liuxu".to_string()),
+            Some("api-token".to_string()),
+            Some("personal-token".to_string()),
+            false,
+            None,
+        )
+        .expect("client should be created");
+
+        assert!(matches!(
+            client.auth,
+            AtlassianAuth::Bearer { ref token } if token == "personal-token"
+        ));
+    }
+
+    #[test]
+    fn confluence_search_request_matches_curl_bearer_shape() {
+        let client = ConfluenceClient::new(
+            "https://wiki.xwwxkj.com".to_string(),
+            Some("liuxu".to_string()),
+            None,
+            Some("personal-token".to_string()),
+            false,
+            None,
+        )
+        .expect("client should be created");
+
+        let request = build_confluence_request(&client);
+
+        assert_eq!(request.method(), Method::GET);
+        assert_eq!(
+            request.url().as_str(),
+            "https://wiki.xwwxkj.com/rest/api/content/search?cql=siteSearch+%7E+%22test%22&limit=1&expand=space%2Cversion%2Chistory.lastUpdated"
+        );
+        assert_eq!(
+            request.headers().get(AUTHORIZATION).unwrap(),
+            "Bearer personal-token"
+        );
+        assert_eq!(request.headers().get(ACCEPT).unwrap(), "application/json");
+        assert!(
+            request.headers().get(CONTENT_TYPE).is_none(),
+            "GET request should not include a JSON content type by default"
+        );
+    }
+
+    #[test]
+    fn confluence_api_token_falls_back_to_basic_auth() {
+        let client = ConfluenceClient::new(
+            "https://wiki.xwwxkj.com".to_string(),
+            Some("liuxu".to_string()),
+            Some("api-token".to_string()),
+            None,
+            false,
+            None,
+        )
+        .expect("client should be created");
+
+        assert!(matches!(
+            client.auth,
+            AtlassianAuth::Basic {
+                ref username,
+                ref token
+            } if username == "liuxu" && token == "api-token"
+        ));
+    }
+
+    #[tokio::test]
+    #[ignore = "live test requires Confluence credentials"]
+    async fn confluence_live_search_with_env_credentials() {
+        let url = env::var("CONFLUENCE_URL").expect("CONFLUENCE_URL must be set");
+        let username = env::var("CONFLUENCE_USERNAME").ok();
+        let api_token = env::var("CONFLUENCE_API_TOKEN").ok();
+        let personal_token = env::var("CONFLUENCE_PERSONAL_TOKEN").ok();
+        let ssl_verify = env::var("HTTP_SSL_VERIFY")
+            .map(|value| {
+                matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "true" | "1" | "yes" | "on"
+                )
+            })
+            .unwrap_or(false);
+        let query = env::var("CONFLUENCE_TEST_QUERY").unwrap_or_else(|_| "test".to_string());
+
+        let client =
+            ConfluenceClient::new(url, username, api_token, personal_token, ssl_verify, None)
+                .expect("client should be created");
+
+        let results = client
+            .search(&query, Some(1), None)
+            .await
+            .expect("live confluence search should succeed");
+
+        let items = results
+            .as_array()
+            .expect("confluence search should return an array");
+        assert!(
+            !items.is_empty(),
+            "confluence search returned no results for query"
+        );
+    }
 }

@@ -1,4 +1,4 @@
-use crate::searcher::SearcherError;
+use crate::searcher::{SearcherError, global_http_ssl_verify, new_shared_http_client};
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -20,10 +20,7 @@ impl HarborClient {
     pub fn new(base_url: String, username: String, password: String) -> Self {
         let auth_header = format!("Basic {}", basic_auth_encode(&username, &password));
 
-        let client = Client::builder()
-            .danger_accept_invalid_certs(true)
-            .build()
-            .expect("Failed to create HTTP client");
+        let client = new_shared_http_client(global_http_ssl_verify());
 
         // 移除末尾的斜杠
         let base_url = base_url.trim_end_matches('/').to_string();

@@ -1,5 +1,7 @@
+use reqwest::{Client, ClientBuilder, header::HeaderMap};
 use std::env::var;
 use std::error::Error as StdError;
+use std::time::Duration;
 use thiserror::Error;
 
 pub mod atlassian;
@@ -53,6 +55,10 @@ pub enum SearcherError {
     Other(String),
 }
 
+const DEFAULT_HTTP_SSL_VERIFY: bool = false;
+const DEFAULT_HTTP_CONNECT_TIMEOUT_SECS: u64 = 10;
+const DEFAULT_HTTP_TIMEOUT_SECS: u64 = 30;
+
 fn format_reqwest_error(error: &reqwest::Error) -> String {
     let mut details = vec![error.to_string()];
 
@@ -95,6 +101,37 @@ fn format_reqwest_error(error: &reqwest::Error) -> String {
     details.join(" | ")
 }
 
+pub(crate) fn global_http_ssl_verify() -> bool {
+    env_bool("HTTP_SSL_VERIFY", DEFAULT_HTTP_SSL_VERIFY)
+}
+
+fn shared_http_client_builder(ssl_verify: bool) -> ClientBuilder {
+    Client::builder()
+        .danger_accept_invalid_certs(!ssl_verify)
+        .connect_timeout(Duration::from_secs(DEFAULT_HTTP_CONNECT_TIMEOUT_SECS))
+        .timeout(Duration::from_secs(DEFAULT_HTTP_TIMEOUT_SECS))
+}
+
+pub(crate) fn build_shared_http_client(ssl_verify: bool) -> Result<Client, SearcherError> {
+    shared_http_client_builder(ssl_verify)
+        .build()
+        .map_err(SearcherError::RequestError)
+}
+
+pub(crate) fn build_shared_http_client_with_headers(
+    ssl_verify: bool,
+    headers: HeaderMap,
+) -> Result<Client, SearcherError> {
+    shared_http_client_builder(ssl_verify)
+        .default_headers(headers)
+        .build()
+        .map_err(SearcherError::RequestError)
+}
+
+pub(crate) fn new_shared_http_client(ssl_verify: bool) -> Client {
+    build_shared_http_client(ssl_verify).expect("Failed to create HTTP client")
+}
+
 /// 从环境变量构建 Searcher 实例
 ///
 /// # 环境变量
@@ -117,16 +154,15 @@ fn format_reqwest_error(error: &reqwest::Error) -> String {
 /// - `DORIS_PASSWORD`: Doris 密码 (可选)
 /// - `DORIS_DB`: Doris 数据库名 (可���)
 /// - `DORIS_HTTP_URL`: Doris HTTP API URL (可选, e.g., http://host:8030)
+/// - `HTTP_SSL_VERIFY`: 全局 reqwest TLS 证书校验开关，默认 false
 /// - `WEIXIN_WEBHOOK_URL`: 企业微信机器人 Webhook URL (可选)
 /// - `JIRA_URL`: Jira 基础 URL (可选)
 /// - `JIRA_USERNAME` / `JIRA_API_TOKEN`: Jira Basic 认证 (可选)
 /// - `JIRA_PERSONAL_TOKEN`: Jira PAT 认证 (可选)
-/// - `JIRA_SSL_VERIFY`: Jira 是否校验证书，默认 true
 /// - `JIRA_PROJECTS_FILTER`: Jira 项目过滤器 (可选)
 /// - `CONFLUENCE_URL`: Confluence 基础 URL (可选)
 /// - `CONFLUENCE_USERNAME` / `CONFLUENCE_API_TOKEN`: Confluence Basic 认证 (可选)
 /// - `CONFLUENCE_PERSONAL_TOKEN`: Confluence PAT 认证 (可选)
-/// - `CONFLUENCE_SSL_VERIFY`: Confluence 是否校验证书，默认 true
 /// - `CONFLUENCE_SPACES_FILTER`: Confluence 空间过滤器 (可选)
 ///
 /// # 示例
@@ -206,7 +242,7 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         let username = var("JIRA_USERNAME").ok();
         let api_token = var("JIRA_API_TOKEN").ok();
         let personal_token = var("JIRA_PERSONAL_TOKEN").ok();
-        let ssl_verify = env_bool("JIRA_SSL_VERIFY", true);
+        let ssl_verify = global_http_ssl_verify();
         let projects_filter = var("JIRA_PROJECTS_FILTER").ok();
 
         if personal_token.is_some() || (username.is_some() && api_token.is_some()) {
@@ -230,7 +266,7 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         let username = var("CONFLUENCE_USERNAME").ok();
         let api_token = var("CONFLUENCE_API_TOKEN").ok();
         let personal_token = var("CONFLUENCE_PERSONAL_TOKEN").ok();
-        let ssl_verify = env_bool("CONFLUENCE_SSL_VERIFY", true);
+        let ssl_verify = global_http_ssl_verify();
         let spaces_filter = var("CONFLUENCE_SPACES_FILTER").ok();
 
         if personal_token.is_some() || (username.is_some() && api_token.is_some()) {
@@ -337,7 +373,7 @@ pub async fn build_searcher_async() -> Result<Searcher, SearcherError> {
         let username = var("JIRA_USERNAME").ok();
         let api_token = var("JIRA_API_TOKEN").ok();
         let personal_token = var("JIRA_PERSONAL_TOKEN").ok();
-        let ssl_verify = env_bool("JIRA_SSL_VERIFY", true);
+        let ssl_verify = global_http_ssl_verify();
         let projects_filter = var("JIRA_PROJECTS_FILTER").ok();
 
         if personal_token.is_some() || (username.is_some() && api_token.is_some()) {
@@ -361,7 +397,7 @@ pub async fn build_searcher_async() -> Result<Searcher, SearcherError> {
         let username = var("CONFLUENCE_USERNAME").ok();
         let api_token = var("CONFLUENCE_API_TOKEN").ok();
         let personal_token = var("CONFLUENCE_PERSONAL_TOKEN").ok();
-        let ssl_verify = env_bool("CONFLUENCE_SSL_VERIFY", true);
+        let ssl_verify = global_http_ssl_verify();
         let spaces_filter = var("CONFLUENCE_SPACES_FILTER").ok();
 
         if personal_token.is_some() || (username.is_some() && api_token.is_some()) {

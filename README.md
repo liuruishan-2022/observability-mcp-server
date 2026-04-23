@@ -40,6 +40,7 @@ Set environment variables in `.env`:
 # Required
 PROMETHEUS_ROOT=http://your-prometheus:9090
 LOKI_ROOT=http://your-loki:3100
+HTTP_SSL_VERIFY=false
 
 # Optional - Harbor (for container registry management)
 HARBOR_URL=https://harbor.example.com

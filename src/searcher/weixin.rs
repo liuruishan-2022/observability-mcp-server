@@ -1,4 +1,4 @@
-use crate::searcher::SearcherError;
+use crate::searcher::{SearcherError, global_http_ssl_verify, new_shared_http_client};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -35,7 +35,7 @@ impl WeixinClient {
     pub fn new(webhook_url: String) -> Self {
         Self {
             webhook_url,
-            client: Client::new(),
+            client: new_shared_http_client(global_http_ssl_verify()),
         }
     }
 

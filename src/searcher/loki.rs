@@ -1,4 +1,4 @@
-use super::SearcherError;
+use super::{SearcherError, global_http_ssl_verify, new_shared_http_client};
 use serde::{Deserialize, Serialize};
 
 ///
@@ -47,7 +47,7 @@ pub struct LokiClient {
 impl LokiClient {
     pub fn new(root: String) -> Self {
         LokiClient {
-            client: reqwest::Client::new(),
+            client: new_shared_http_client(global_http_ssl_verify()),
             root: root,
         }
     }
