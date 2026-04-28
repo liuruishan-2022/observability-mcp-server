@@ -254,6 +254,1308 @@ pub fn html_to_text_lossy(html: &str) -> String {
     lines.join("\n")
 }
 
+pub struct BitbucketClient {
+    client: reqwest::Client,
+    auth: AtlassianAuth,
+    base_url: String,
+    default_project: Option<String>,
+    default_user_slug: Option<String>,
+}
+
+impl BitbucketClient {
+    pub fn new(
+        base_url: String,
+        username: Option<String>,
+        password: Option<String>,
+        personal_token: Option<String>,
+        ssl_verify: bool,
+        default_project: Option<String>,
+    ) -> Result<Self, SearcherError> {
+        let base_url = normalize_base_url(&base_url);
+        if is_cloud_url(&base_url) {
+            return Err(SearcherError::ApiError(
+                "Bitbucket Cloud URLs are not supported; configure a Bitbucket Server/Data Center base URL"
+                    .to_string(),
+            ));
+        }
+
+        let default_user_slug = username
+            .as_ref()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let auth = match personal_token {
+            Some(token) if !token.trim().is_empty() => AtlassianAuth::Bearer { token },
+            _ => {
+                let username = username.ok_or_else(|| {
+                    SearcherError::ApiError(
+                        "Bitbucket requires either BITBUCKET_PERSONAL_TOKEN or BITBUCKET_USERNAME/BITBUCKET_PASSWORD"
+                            .to_string(),
+                    )
+                })?;
+                let token = password.ok_or_else(|| {
+                    SearcherError::ApiError(
+                        "Bitbucket requires either BITBUCKET_PERSONAL_TOKEN or BITBUCKET_USERNAME/BITBUCKET_PASSWORD"
+                            .to_string(),
+                    )
+                })?;
+                AtlassianAuth::Basic { username, token }
+            }
+        };
+
+        Ok(Self {
+            client: build_http_client(ssl_verify)?,
+            auth,
+            base_url,
+            default_project: default_project
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty()),
+            default_user_slug,
+        })
+    }
+
+    pub async fn get(
+        &self,
+        path: &str,
+        query_params: Option<Map<String, Value>>,
+    ) -> Result<Value, SearcherError> {
+        self.request_json(Method::GET, path, query_params, None)
+            .await
+    }
+
+    pub async fn post(
+        &self,
+        path: &str,
+        query_params: Option<Map<String, Value>>,
+        body: Value,
+    ) -> Result<Value, SearcherError> {
+        self.request_json(Method::POST, path, query_params, Some(body))
+            .await
+    }
+
+    pub async fn put(
+        &self,
+        path: &str,
+        query_params: Option<Map<String, Value>>,
+        body: Value,
+    ) -> Result<Value, SearcherError> {
+        self.request_json(Method::PUT, path, query_params, Some(body))
+            .await
+    }
+
+    pub async fn patch(
+        &self,
+        path: &str,
+        query_params: Option<Map<String, Value>>,
+        body: Value,
+    ) -> Result<Value, SearcherError> {
+        self.request_json(Method::PATCH, path, query_params, Some(body))
+            .await
+    }
+
+    pub async fn delete(
+        &self,
+        path: &str,
+        query_params: Option<Map<String, Value>>,
+    ) -> Result<Value, SearcherError> {
+        self.request_json(Method::DELETE, path, query_params, None)
+            .await
+    }
+
+    pub async fn list_projects(
+        &self,
+        start: Option<usize>,
+        limit: Option<usize>,
+        name: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let mut response = self
+            .request_json(
+                Method::GET,
+                "projects",
+                Some(page_query(start, limit)),
+                None,
+            )
+            .await?;
+        filter_page_values_by_name(&mut response, name);
+        Ok(response)
+    }
+
+    pub async fn list_repositories(
+        &self,
+        project_key: Option<&str>,
+        start: Option<usize>,
+        limit: Option<usize>,
+        name: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let path = match self.resolve_project(project_key) {
+            Ok(project_key) => format!("projects/{}/repos", encode_path_segment(project_key)),
+            Err(_) => "repos".to_string(),
+        };
+        let mut response = self
+            .request_json(Method::GET, &path, Some(page_query(start, limit)), None)
+            .await?;
+        filter_page_values_by_name(&mut response, name);
+        Ok(response)
+    }
+
+    pub async fn get_repository(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+    ) -> Result<Value, SearcherError> {
+        let path = self.repo_path(project_key, repo_slug, "")?;
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn list_branches(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        filter_text: Option<&str>,
+        order_by: Option<&str>,
+        details: Option<bool>,
+        start: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let mut query = page_query(start, limit);
+        if let Some(filter_text) = filter_text.filter(|value| !value.trim().is_empty()) {
+            query.insert(
+                "filterText".to_string(),
+                Value::String(filter_text.to_string()),
+            );
+        }
+        if let Some(order_by) = order_by.filter(|value| !value.trim().is_empty()) {
+            query.insert("orderBy".to_string(), Value::String(order_by.to_string()));
+        }
+        if let Some(details) = details {
+            query.insert("details".to_string(), Value::Bool(details));
+        }
+        let path = self.repo_path(project_key, repo_slug, "/branches")?;
+        self.request_json(Method::GET, &path, Some(query), None)
+            .await
+    }
+
+    pub async fn get_branch(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        branch: &str,
+    ) -> Result<Value, SearcherError> {
+        let response = self
+            .list_branches(
+                project_key,
+                repo_slug,
+                Some(branch.trim_start_matches("refs/heads/")),
+                None,
+                Some(true),
+                None,
+                Some(100),
+            )
+            .await?;
+        let normalized = normalize_branch_ref(branch);
+        response
+            .get("values")
+            .and_then(Value::as_array)
+            .and_then(|branches| {
+                branches
+                    .iter()
+                    .find(|item| {
+                        item.get("id").and_then(Value::as_str) == Some(normalized.as_str())
+                            || item.get("displayId").and_then(Value::as_str)
+                                == Some(branch.trim_start_matches("refs/heads/"))
+                    })
+                    .cloned()
+            })
+            .ok_or_else(|| SearcherError::ApiError(format!("Bitbucket branch not found: {branch}")))
+    }
+
+    pub async fn list_commits(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        until: Option<&str>,
+        since: Option<&str>,
+        path: Option<&str>,
+        start: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let mut query = page_query(start, limit);
+        if let Some(until) = until.filter(|value| !value.trim().is_empty()) {
+            query.insert("until".to_string(), Value::String(until.to_string()));
+        }
+        if let Some(since) = since.filter(|value| !value.trim().is_empty()) {
+            query.insert("since".to_string(), Value::String(since.to_string()));
+        }
+        if let Some(path) = path.filter(|value| !value.trim().is_empty()) {
+            query.insert("path".to_string(), Value::String(path.to_string()));
+        }
+        let request_path = self.repo_path(project_key, repo_slug, "/commits")?;
+        self.request_json(Method::GET, &request_path, Some(query), None)
+            .await
+    }
+
+    pub async fn get_commit(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        commit_id: &str,
+    ) -> Result<Value, SearcherError> {
+        let path = self.repo_path(
+            project_key,
+            repo_slug,
+            &format!("/commits/{}", encode_path_segment(commit_id)),
+        )?;
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn get_file_content(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        file_path: &str,
+        at: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let mut query = Map::new();
+        if let Some(at) = at.filter(|value| !value.trim().is_empty()) {
+            query.insert("at".to_string(), Value::String(at.to_string()));
+        }
+        let path = self.repo_path(
+            project_key,
+            repo_slug,
+            &format!("/raw/{}", encode_path(file_path)),
+        )?;
+        let bytes = self
+            .request_bytes(Method::GET, &path, Some(query), Some("text/plain"))
+            .await?;
+        Ok(json!({
+            "path": file_path,
+            "at": at,
+            "content": String::from_utf8_lossy(&bytes).to_string()
+        }))
+    }
+
+    pub async fn list_pull_requests(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        state: Option<&str>,
+        direction: Option<&str>,
+        at: Option<&str>,
+        order: Option<&str>,
+        start: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let mut query = page_query(start, limit);
+        insert_optional_query(&mut query, "state", state);
+        insert_optional_query(&mut query, "direction", direction);
+        insert_optional_query(&mut query, "at", at);
+        insert_optional_query(&mut query, "order", order);
+        let path = self.repo_path(project_key, repo_slug, "/pull-requests")?;
+        self.request_json(Method::GET, &path, Some(query), None)
+            .await
+    }
+
+    pub async fn create_pull_request(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        title: &str,
+        description: Option<&str>,
+        source_branch: &str,
+        target_branch: &str,
+        source_project_key: Option<&str>,
+        source_repo_slug: Option<&str>,
+        reviewers: Option<Vec<String>>,
+    ) -> Result<Value, SearcherError> {
+        let target_project_key = self.resolve_project(project_key)?;
+        let source_project_key = source_project_key.unwrap_or(target_project_key);
+        let source_repo_slug = source_repo_slug.unwrap_or(repo_slug);
+        let body = json!({
+            "title": title,
+            "description": description.unwrap_or(""),
+            "fromRef": {
+                "id": normalize_branch_ref(source_branch),
+                "repository": {
+                    "slug": source_repo_slug,
+                    "project": { "key": source_project_key }
+                }
+            },
+            "toRef": {
+                "id": normalize_branch_ref(target_branch),
+                "repository": {
+                    "slug": repo_slug,
+                    "project": { "key": target_project_key }
+                }
+            },
+            "reviewers": reviewers
+                .unwrap_or_default()
+                .into_iter()
+                .map(|name| json!({ "user": { "name": name } }))
+                .collect::<Vec<_>>()
+        });
+        let path = self.repo_path(Some(target_project_key), repo_slug, "/pull-requests")?;
+        self.request_json(Method::POST, &path, None, Some(body))
+            .await
+    }
+
+    pub async fn get_pull_request(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+    ) -> Result<Value, SearcherError> {
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "")?;
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn update_pull_request(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        title: Option<&str>,
+        description: Option<&str>,
+        target_branch: Option<&str>,
+        reviewers: Option<Vec<String>>,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let current = self
+            .get_pull_request(project_key, repo_slug, pull_request_id)
+            .await?;
+        let version = version
+            .or_else(|| current.get("version").and_then(Value::as_i64))
+            .ok_or_else(|| {
+                SearcherError::ApiError(
+                    "Bitbucket pull request version is required for updates".to_string(),
+                )
+            })?;
+
+        let mut body = current.as_object().cloned().unwrap_or_default();
+        if let Some(title) = title {
+            body.insert("title".to_string(), Value::String(title.to_string()));
+        }
+        if let Some(description) = description {
+            body.insert(
+                "description".to_string(),
+                Value::String(description.to_string()),
+            );
+        }
+        if let Some(target_branch) = target_branch {
+            body.insert(
+                "toRef".to_string(),
+                json!({
+                    "id": normalize_branch_ref(target_branch),
+                    "repository": {
+                        "slug": repo_slug,
+                        "project": { "key": self.resolve_project(project_key)? }
+                    }
+                }),
+            );
+        }
+        if let Some(reviewers) = reviewers {
+            body.insert(
+                "reviewers".to_string(),
+                Value::Array(
+                    reviewers
+                        .into_iter()
+                        .map(|name| json!({ "user": { "name": name } }))
+                        .collect(),
+                ),
+            );
+        }
+        body.insert("version".to_string(), Value::Number(version.into()));
+
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "")?;
+        self.request_json(Method::PUT, &path, None, Some(Value::Object(body)))
+            .await
+    }
+
+    pub async fn merge_pull_request(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        version: Option<i64>,
+        message: Option<&str>,
+        strategy_id: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let version = self
+            .resolve_pull_request_version(project_key, repo_slug, pull_request_id, version)
+            .await?;
+        let mut query = Map::new();
+        query.insert("version".to_string(), Value::Number(version.into()));
+        let mut body = Map::new();
+        if let Some(message) = message.filter(|value| !value.trim().is_empty()) {
+            body.insert("message".to_string(), Value::String(message.to_string()));
+        }
+        if let Some(strategy_id) = strategy_id.filter(|value| !value.trim().is_empty()) {
+            body.insert(
+                "strategyId".to_string(),
+                Value::String(strategy_id.to_string()),
+            );
+        }
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "/merge")?;
+        self.request_json(Method::POST, &path, Some(query), Some(Value::Object(body)))
+            .await
+    }
+
+    pub async fn decline_pull_request(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let version = self
+            .resolve_pull_request_version(project_key, repo_slug, pull_request_id, version)
+            .await?;
+        self.versioned_pull_request_action(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            "/decline",
+            version,
+        )
+        .await
+    }
+
+    pub async fn reopen_pull_request(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let version = self
+            .resolve_pull_request_version(project_key, repo_slug, pull_request_id, version)
+            .await?;
+        self.versioned_pull_request_action(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            "/reopen",
+            version,
+        )
+        .await
+    }
+
+    pub async fn set_pull_request_status(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        user_slug: Option<&str>,
+        status: &str,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let user_slug = user_slug
+            .or(self.default_user_slug.as_deref())
+            .ok_or_else(|| {
+                SearcherError::ApiError(
+                    "user_slug is required when BITBUCKET_USERNAME is not configured".to_string(),
+                )
+            })?;
+        let version = self
+            .resolve_pull_request_version(project_key, repo_slug, pull_request_id, version)
+            .await?;
+        let mut query = Map::new();
+        query.insert("version".to_string(), Value::Number(version.into()));
+        let path = self.pull_request_path(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            &format!("/participants/{}", encode_path_segment(user_slug)),
+        )?;
+        self.request_json(
+            Method::PUT,
+            &path,
+            Some(query),
+            Some(json!({ "status": status })),
+        )
+        .await
+    }
+
+    pub async fn get_pull_request_activity(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        start: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let path =
+            self.pull_request_path(project_key, repo_slug, pull_request_id, "/activities")?;
+        self.request_json(Method::GET, &path, Some(page_query(start, limit)), None)
+            .await
+    }
+
+    pub async fn get_pull_request_commits(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        start: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "/commits")?;
+        self.request_json(Method::GET, &path, Some(page_query(start, limit)), None)
+            .await
+    }
+
+    pub async fn get_pull_request_comments(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        start: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "/comments")?;
+        self.request_json(Method::GET, &path, Some(page_query(start, limit)), None)
+            .await
+    }
+
+    pub async fn get_pull_request_comment(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        comment_id: &str,
+    ) -> Result<Value, SearcherError> {
+        let path = self.pull_request_path(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            &format!("/comments/{}", encode_path_segment(comment_id)),
+        )?;
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn add_pull_request_comment(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        text: &str,
+        anchor: Option<Value>,
+        parent_id: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let mut body = Map::new();
+        body.insert("text".to_string(), Value::String(text.to_string()));
+        if let Some(anchor) = anchor {
+            body.insert("anchor".to_string(), anchor);
+        }
+        if let Some(parent_id) = parent_id {
+            body.insert("parent".to_string(), json!({ "id": parent_id }));
+        }
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "/comments")?;
+        self.request_json(Method::POST, &path, None, Some(Value::Object(body)))
+            .await
+    }
+
+    pub async fn update_pull_request_comment(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        comment_id: &str,
+        text: &str,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let mut body = Map::new();
+        body.insert("text".to_string(), Value::String(text.to_string()));
+        if let Some(version) = version {
+            body.insert("version".to_string(), Value::Number(version.into()));
+        }
+        let path = self.pull_request_path(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            &format!("/comments/{}", encode_path_segment(comment_id)),
+        )?;
+        self.request_json(Method::PUT, &path, None, Some(Value::Object(body)))
+            .await
+    }
+
+    pub async fn set_pull_request_comment_state(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        comment_id: &str,
+        state: &str,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let version = match version {
+            Some(version) => Some(version),
+            None => self
+                .get_pull_request_comment(project_key, repo_slug, pull_request_id, comment_id)
+                .await?
+                .get("version")
+                .and_then(Value::as_i64),
+        };
+        let mut body = Map::new();
+        body.insert("state".to_string(), Value::String(state.to_string()));
+        if let Some(version) = version {
+            body.insert("version".to_string(), Value::Number(version.into()));
+        }
+        let path = self.pull_request_path(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            &format!("/comments/{}", encode_path_segment(comment_id)),
+        )?;
+        self.request_json(Method::PUT, &path, None, Some(Value::Object(body)))
+            .await
+    }
+
+    pub async fn delete_pull_request_comment(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        comment_id: &str,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let mut query = Map::new();
+        if let Some(version) = version {
+            query.insert("version".to_string(), Value::Number(version.into()));
+        }
+        let path = self.pull_request_path(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            &format!("/comments/{}", encode_path_segment(comment_id)),
+        )?;
+        self.request_json(Method::DELETE, &path, Some(query), None)
+            .await
+    }
+
+    pub async fn get_pull_request_diff(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        path: Option<&str>,
+        context_lines: Option<usize>,
+        whitespace: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let suffix = match path.filter(|value| !value.trim().is_empty()) {
+            Some(path) => format!("/diff/{}", encode_path(path)),
+            None => "/diff".to_string(),
+        };
+        let mut query = Map::new();
+        if let Some(context_lines) = context_lines {
+            query.insert(
+                "contextLines".to_string(),
+                Value::Number(context_lines.into()),
+            );
+        }
+        insert_optional_query(&mut query, "whitespace", whitespace);
+        let request_path =
+            self.pull_request_path(project_key, repo_slug, pull_request_id, &suffix)?;
+        self.request_json(Method::GET, &request_path, Some(query), None)
+            .await
+    }
+
+    pub async fn get_pull_request_changes(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        since_id: Option<&str>,
+        with_comments: Option<bool>,
+        start: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let mut query = page_query(start, limit);
+        insert_optional_query(&mut query, "sinceId", since_id);
+        if let Some(with_comments) = with_comments {
+            query.insert("withComments".to_string(), Value::Bool(with_comments));
+        }
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "/changes")?;
+        self.request_json(Method::GET, &path, Some(query), None)
+            .await
+    }
+
+    pub async fn get_pull_request_patch(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+    ) -> Result<Value, SearcherError> {
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, ".patch")?;
+        let bytes = self
+            .request_bytes(Method::GET, &path, None, Some("text/plain"))
+            .await?;
+        Ok(json!({ "patch": String::from_utf8_lossy(&bytes).to_string() }))
+    }
+
+    pub async fn list_pull_request_tasks(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        start: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "/tasks")?;
+        self.request_json(Method::GET, &path, Some(page_query(start, limit)), None)
+            .await
+    }
+
+    pub async fn get_pull_request_task(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        task_id: &str,
+    ) -> Result<Value, SearcherError> {
+        let path = self.pull_request_path(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            &format!("/tasks/{}", encode_path_segment(task_id)),
+        )?;
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn create_pull_request_task(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        text: &str,
+        anchor: Option<Value>,
+    ) -> Result<Value, SearcherError> {
+        let mut body = Map::new();
+        body.insert("text".to_string(), Value::String(text.to_string()));
+        if let Some(anchor) = anchor {
+            body.insert("anchor".to_string(), anchor);
+        }
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, "/tasks")?;
+        self.request_json(Method::POST, &path, None, Some(Value::Object(body)))
+            .await
+    }
+
+    pub async fn update_pull_request_task(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        task_id: &str,
+        text: Option<&str>,
+        state: Option<&str>,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let mut body = Map::new();
+        if let Some(text) = text {
+            body.insert("text".to_string(), Value::String(text.to_string()));
+        }
+        if let Some(state) = state {
+            body.insert("state".to_string(), Value::String(state.to_string()));
+        }
+        if let Some(version) = version {
+            body.insert("version".to_string(), Value::Number(version.into()));
+        }
+        let path = self.pull_request_path(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            &format!("/tasks/{}", encode_path_segment(task_id)),
+        )?;
+        self.request_json(Method::PUT, &path, None, Some(Value::Object(body)))
+            .await
+    }
+
+    pub async fn delete_pull_request_task(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        task_id: &str,
+        version: Option<i64>,
+    ) -> Result<Value, SearcherError> {
+        let mut query = Map::new();
+        if let Some(version) = version {
+            query.insert("version".to_string(), Value::Number(version.into()));
+        }
+        let path = self.pull_request_path(
+            project_key,
+            repo_slug,
+            pull_request_id,
+            &format!("/tasks/{}", encode_path_segment(task_id)),
+        )?;
+        self.request_json(Method::DELETE, &path, Some(query), None)
+            .await
+    }
+
+    pub async fn get_pull_request_statuses(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        commit_id: Option<&str>,
+        start: Option<usize>,
+        limit: Option<usize>,
+        order_by: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let commit_id = match commit_id.filter(|value| !value.trim().is_empty()) {
+            Some(commit_id) => commit_id.to_string(),
+            None => {
+                self.pull_request_source_commit(project_key, repo_slug, pull_request_id)
+                    .await?
+            }
+        };
+        let mut query = page_query(start, limit);
+        insert_optional_query(&mut query, "orderBy", order_by);
+        let path = format!(
+            "/rest/build-status/1.0/commits/{}",
+            encode_path_segment(&commit_id)
+        );
+        self.request_json(Method::GET, &path, Some(query), None)
+            .await
+    }
+
+    pub async fn get_pending_review_pull_requests(
+        &self,
+        project_key: Option<&str>,
+        user_slug: Option<&str>,
+        repository_list: Option<Vec<String>>,
+        limit: Option<usize>,
+    ) -> Result<Value, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        let user_slug = user_slug
+            .filter(|value| !value.trim().is_empty())
+            .or(self.default_user_slug.as_deref())
+            .ok_or_else(|| {
+                SearcherError::ApiError(
+                    "user_slug is required when BITBUCKET_USERNAME is not configured".to_string(),
+                )
+            })?;
+        let limit = limit.unwrap_or(50).clamp(1, 1000);
+        let repositories = match repository_list {
+            Some(repositories) if !repositories.is_empty() => repositories,
+            _ => self.collect_repository_slugs(project_key, limit).await?,
+        };
+
+        let mut pending = Vec::new();
+        for repo_slug in &repositories {
+            let prs = self
+                .list_pull_requests(
+                    Some(project_key),
+                    repo_slug,
+                    Some("OPEN"),
+                    None,
+                    None,
+                    Some("NEWEST"),
+                    None,
+                    Some(limit.min(100)),
+                )
+                .await;
+            let Ok(prs) = prs else {
+                continue;
+            };
+            let Some(values) = prs.get("values").and_then(Value::as_array) else {
+                continue;
+            };
+            for pr in values {
+                if is_pending_reviewer(pr, user_slug) {
+                    let mut pr = pr.clone();
+                    if let Value::Object(map) = &mut pr {
+                        map.insert(
+                            "repository".to_string(),
+                            json!({
+                                "project_key": project_key,
+                                "slug": repo_slug,
+                            }),
+                        );
+                    }
+                    pending.push(pr);
+                    if pending.len() >= limit {
+                        sort_pull_requests_by_updated_desc(&mut pending);
+                        return Ok(json!({
+                            "pending_review_prs": pending,
+                            "total_found": pending.len(),
+                            "searched_repositories": repositories.len(),
+                            "user": user_slug,
+                            "project_key": project_key
+                        }));
+                    }
+                }
+            }
+        }
+
+        sort_pull_requests_by_updated_desc(&mut pending);
+        Ok(json!({
+            "pending_review_prs": pending,
+            "total_found": pending.len(),
+            "searched_repositories": repositories.len(),
+            "user": user_slug,
+            "project_key": project_key
+        }))
+    }
+
+    pub async fn get_repository_branching_model(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+    ) -> Result<Value, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        let path = format!(
+            "/rest/branch-utils/1.0/projects/{}/repos/{}/branchmodel",
+            encode_path_segment(project_key),
+            encode_path_segment(repo_slug)
+        );
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn get_effective_repository_branching_model(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+    ) -> Result<Value, SearcherError> {
+        self.get_repository_branching_model(project_key, repo_slug)
+            .await
+    }
+
+    pub async fn get_repository_branching_model_settings(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+    ) -> Result<Value, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        let path = format!(
+            "/rest/branch-utils/1.0/projects/{}/repos/{}/branchmodel/configuration",
+            encode_path_segment(project_key),
+            encode_path_segment(repo_slug)
+        );
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn update_repository_branching_model_settings(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        body: Value,
+    ) -> Result<Value, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        let path = format!(
+            "/rest/branch-utils/1.0/projects/{}/repos/{}/branchmodel/configuration",
+            encode_path_segment(project_key),
+            encode_path_segment(repo_slug)
+        );
+        self.request_json(Method::PUT, &path, None, Some(body))
+            .await
+    }
+
+    pub async fn get_project_branching_model(
+        &self,
+        project_key: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        let path = format!(
+            "/rest/branch-utils/1.0/projects/{}/branchmodel",
+            encode_path_segment(project_key)
+        );
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn get_project_branching_model_settings(
+        &self,
+        project_key: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        let path = format!(
+            "/rest/branch-utils/1.0/projects/{}/branchmodel/configuration",
+            encode_path_segment(project_key)
+        );
+        self.request_json(Method::GET, &path, None, None).await
+    }
+
+    pub async fn update_project_branching_model_settings(
+        &self,
+        project_key: Option<&str>,
+        body: Value,
+    ) -> Result<Value, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        let path = format!(
+            "/rest/branch-utils/1.0/projects/{}/branchmodel/configuration",
+            encode_path_segment(project_key)
+        );
+        self.request_json(Method::PUT, &path, None, Some(body))
+            .await
+    }
+
+    pub async fn get_default_reviewers(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: Option<&str>,
+        source_ref_id: Option<&str>,
+        target_ref_id: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        let path = match repo_slug {
+            Some(repo_slug) => format!(
+                "/rest/default-reviewers/latest/projects/{}/repos/{}/reviewers",
+                encode_path_segment(project_key),
+                encode_path_segment(repo_slug)
+            ),
+            None => format!(
+                "/rest/default-reviewers/latest/projects/{}/reviewers",
+                encode_path_segment(project_key)
+            ),
+        };
+        let mut query = Map::new();
+        insert_optional_query(&mut query, "sourceRefId", source_ref_id);
+        insert_optional_query(&mut query, "targetRefId", target_ref_id);
+        self.request_json(Method::GET, &path, Some(query), None)
+            .await
+    }
+
+    async fn pull_request_source_commit(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+    ) -> Result<String, SearcherError> {
+        let pull_request = self
+            .get_pull_request(project_key, repo_slug, pull_request_id)
+            .await?;
+        pull_request
+            .get("fromRef")
+            .and_then(|from_ref| {
+                from_ref
+                    .get("latestCommit")
+                    .or_else(|| from_ref.get("latestChangeset"))
+            })
+            .and_then(Value::as_str)
+            .or_else(|| pull_request.get("fromHash").and_then(Value::as_str))
+            .map(ToString::to_string)
+            .ok_or_else(|| {
+                SearcherError::ApiError(
+                    "Unable to determine pull request source commit".to_string(),
+                )
+            })
+    }
+
+    async fn collect_repository_slugs(
+        &self,
+        project_key: &str,
+        max_repositories: usize,
+    ) -> Result<Vec<String>, SearcherError> {
+        let mut repositories = Vec::new();
+        let mut start = 0;
+        while repositories.len() < max_repositories {
+            let response = self
+                .list_repositories(Some(project_key), Some(start), Some(100), None)
+                .await?;
+            let values = response
+                .get("values")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            for repository in values {
+                if let Some(slug) = repository.get("slug").and_then(Value::as_str) {
+                    repositories.push(slug.to_string());
+                    if repositories.len() >= max_repositories {
+                        break;
+                    }
+                }
+            }
+            if response
+                .get("isLastPage")
+                .and_then(Value::as_bool)
+                .unwrap_or(true)
+            {
+                break;
+            }
+            start = response
+                .get("nextPageStart")
+                .and_then(Value::as_u64)
+                .map(|value| value as usize)
+                .unwrap_or(start + 100);
+        }
+        Ok(repositories)
+    }
+
+    pub async fn clone_repository(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        target_path: &str,
+        protocol: Option<&str>,
+    ) -> Result<Value, SearcherError> {
+        let repository = self.get_repository(project_key, repo_slug).await?;
+        let clone_url = select_clone_url(&repository, protocol).ok_or_else(|| {
+            SearcherError::ApiError("No matching Bitbucket clone URL found".to_string())
+        })?;
+        let target_dir = Path::new(target_path).join(repo_slug);
+        let output = tokio::process::Command::new("git")
+            .arg("clone")
+            .arg(&clone_url)
+            .arg(&target_dir)
+            .output()
+            .await?;
+
+        if output.status.success() {
+            Ok(json!({
+                "clone_url": clone_url,
+                "target_path": target_dir,
+                "status": "cloned"
+            }))
+        } else {
+            Err(SearcherError::ApiError(format!(
+                "git clone failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )))
+        }
+    }
+
+    async fn request_json(
+        &self,
+        method: Method,
+        path: &str,
+        query_params: Option<Map<String, Value>>,
+        body: Option<Value>,
+    ) -> Result<Value, SearcherError> {
+        let mut request = self.client.request(method, self.url_for_path(path));
+        request = apply_auth(request, &self.auth).header(ACCEPT, "application/json");
+        if let Some(query_params) = query_params {
+            let query = query_params
+                .into_iter()
+                .map(|(key, value)| (key, query_value_to_string(value)))
+                .collect::<Vec<_>>();
+            request = request.query(&query);
+        }
+        if let Some(body) = body {
+            request = request.json(&body);
+        }
+        send_json(request).await
+    }
+
+    async fn request_bytes(
+        &self,
+        method: Method,
+        path: &str,
+        query_params: Option<Map<String, Value>>,
+        accept: Option<&str>,
+    ) -> Result<Vec<u8>, SearcherError> {
+        let mut request = self.client.request(method, self.url_for_path(path));
+        request = apply_auth(request, &self.auth);
+        if let Some(accept) = accept {
+            request = request.header(ACCEPT, accept);
+        }
+        if let Some(query_params) = query_params {
+            let query = query_params
+                .into_iter()
+                .map(|(key, value)| (key, query_value_to_string(value)))
+                .collect::<Vec<_>>();
+            request = request.query(&query);
+        }
+        send_bytes(request).await
+    }
+
+    fn resolve_project<'a>(
+        &'a self,
+        project_key: Option<&'a str>,
+    ) -> Result<&'a str, SearcherError> {
+        project_key
+            .filter(|value| !value.trim().is_empty())
+            .or(self.default_project.as_deref())
+            .ok_or_else(|| {
+                SearcherError::ApiError(
+                    "project_key is required when BITBUCKET_PROJECT is not configured".to_string(),
+                )
+            })
+    }
+
+    fn repo_path(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        suffix: &str,
+    ) -> Result<String, SearcherError> {
+        let project_key = self.resolve_project(project_key)?;
+        Ok(format!(
+            "projects/{}/repos/{}{}",
+            encode_path_segment(project_key),
+            encode_path_segment(repo_slug),
+            suffix
+        ))
+    }
+
+    fn pull_request_path(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        suffix: &str,
+    ) -> Result<String, SearcherError> {
+        self.repo_path(
+            project_key,
+            repo_slug,
+            &format!(
+                "/pull-requests/{}{}",
+                encode_path_segment(pull_request_id),
+                suffix
+            ),
+        )
+    }
+
+    async fn resolve_pull_request_version(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        version: Option<i64>,
+    ) -> Result<i64, SearcherError> {
+        if let Some(version) = version {
+            return Ok(version);
+        }
+        self.get_pull_request(project_key, repo_slug, pull_request_id)
+            .await?
+            .get("version")
+            .and_then(Value::as_i64)
+            .ok_or_else(|| {
+                SearcherError::ApiError(
+                    "Bitbucket pull request version is required for this action".to_string(),
+                )
+            })
+    }
+
+    async fn versioned_pull_request_action(
+        &self,
+        project_key: Option<&str>,
+        repo_slug: &str,
+        pull_request_id: &str,
+        suffix: &str,
+        version: i64,
+    ) -> Result<Value, SearcherError> {
+        let mut query = Map::new();
+        query.insert("version".to_string(), Value::Number(version.into()));
+        let path = self.pull_request_path(project_key, repo_slug, pull_request_id, suffix)?;
+        self.request_json(Method::POST, &path, Some(query), Some(json!({})))
+            .await
+    }
+
+    fn url_for_path(&self, path: &str) -> String {
+        let path = path.trim();
+        if path.starts_with("/rest/") {
+            format!("{}{}", self.base_url, path)
+        } else if path.starts_with("rest/") {
+            format!("{}/{}", self.base_url, path)
+        } else if path.starts_with("/api/") || path.starts_with("api/") {
+            format!("{}/rest/{}", self.base_url, path.trim_start_matches('/'))
+        } else {
+            format!(
+                "{}/rest/api/1.0/{}",
+                self.base_url,
+                path.trim_start_matches('/')
+            )
+        }
+    }
+}
+
 fn decode_html_entity(entity: &str) -> &'static str {
     match entity {
         "amp;" => "&",
@@ -264,6 +1566,174 @@ fn decode_html_entity(entity: &str) -> &'static str {
         "nbsp;" => " ",
         _ => "",
     }
+}
+
+fn page_query(start: Option<usize>, limit: Option<usize>) -> Map<String, Value> {
+    let mut query = Map::new();
+    query.insert(
+        "start".to_string(),
+        Value::Number(start.unwrap_or(0).into()),
+    );
+    query.insert(
+        "limit".to_string(),
+        Value::Number(limit.unwrap_or(25).clamp(1, 1000).into()),
+    );
+    query
+}
+
+fn insert_optional_query(query: &mut Map<String, Value>, key: &str, value: Option<&str>) {
+    if let Some(value) = value.filter(|value| !value.trim().is_empty()) {
+        query.insert(key.to_string(), Value::String(value.to_string()));
+    }
+}
+
+fn query_value_to_string(value: Value) -> String {
+    match value {
+        Value::String(value) => value,
+        Value::Bool(value) => value.to_string(),
+        Value::Number(value) => value.to_string(),
+        Value::Null => String::new(),
+        other => other.to_string(),
+    }
+}
+
+fn normalize_branch_ref(branch: &str) -> String {
+    let branch = branch.trim();
+    if branch.starts_with("refs/") {
+        branch.to_string()
+    } else {
+        format!("refs/heads/{branch}")
+    }
+}
+
+fn encode_path(path: &str) -> String {
+    path.split('/')
+        .filter(|segment| !segment.is_empty())
+        .map(encode_path_segment)
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn encode_path_segment(segment: &str) -> String {
+    let mut encoded = String::new();
+    for byte in segment.as_bytes() {
+        let ch = *byte as char;
+        if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.' | '~') {
+            encoded.push(ch);
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    encoded
+}
+
+fn filter_page_values_by_name(response: &mut Value, name: Option<&str>) {
+    let Some(name) = name
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty())
+    else {
+        return;
+    };
+    if let Some(values) = response.get_mut("values").and_then(Value::as_array_mut) {
+        values.retain(|value| {
+            value
+                .get("name")
+                .or_else(|| value.get("slug"))
+                .or_else(|| value.get("key"))
+                .and_then(Value::as_str)
+                .map(|value| value.to_ascii_lowercase().contains(&name))
+                .unwrap_or(false)
+        });
+        let values_len = values.len();
+        if let Some(size) = response.get_mut("size") {
+            *size = Value::Number(values_len.into());
+        }
+    }
+}
+
+fn select_clone_url(repository: &Value, protocol: Option<&str>) -> Option<String> {
+    let desired = match protocol.unwrap_or("ssh").to_ascii_lowercase().as_str() {
+        "https" => "http".to_string(),
+        other => other.to_string(),
+    };
+    let links = repository
+        .get("links")
+        .and_then(|links| links.get("clone"))
+        .and_then(Value::as_array)?;
+
+    links
+        .iter()
+        .find(|link| {
+            link.get("name")
+                .and_then(Value::as_str)
+                .map(|name| name.eq_ignore_ascii_case(&desired))
+                .unwrap_or(false)
+        })
+        .or_else(|| links.first())
+        .and_then(|link| link.get("href").and_then(Value::as_str))
+        .map(ToString::to_string)
+}
+
+fn is_pending_reviewer(pull_request: &Value, user_slug: &str) -> bool {
+    pull_request
+        .get("reviewers")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .chain(
+            pull_request
+                .get("participants")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten(),
+        )
+        .any(|reviewer| {
+            let role_matches = reviewer
+                .get("role")
+                .and_then(Value::as_str)
+                .map(|role| role.eq_ignore_ascii_case("REVIEWER"))
+                .unwrap_or(true);
+            role_matches
+                && bitbucket_user_matches(reviewer.get("user").unwrap_or(reviewer), user_slug)
+                && !bitbucket_review_is_approved(reviewer)
+        })
+}
+
+fn bitbucket_user_matches(user: &Value, expected: &str) -> bool {
+    ["slug", "name", "emailAddress", "displayName"]
+        .iter()
+        .filter_map(|field| user.get(*field).and_then(Value::as_str))
+        .any(|value| value.eq_ignore_ascii_case(expected))
+}
+
+fn bitbucket_review_is_approved(reviewer: &Value) -> bool {
+    reviewer
+        .get("approved")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+        || reviewer
+            .get("status")
+            .and_then(Value::as_str)
+            .map(|status| status.eq_ignore_ascii_case("APPROVED"))
+            .unwrap_or(false)
+}
+
+fn sort_pull_requests_by_updated_desc(pull_requests: &mut [Value]) {
+    pull_requests.sort_by(|left, right| {
+        bitbucket_updated_sort_value(right).cmp(&bitbucket_updated_sort_value(left))
+    });
+}
+
+fn bitbucket_updated_sort_value(value: &Value) -> String {
+    value
+        .get("updatedDate")
+        .or_else(|| value.get("updated_on"))
+        .map(|value| match value {
+            Value::Number(number) => format!("{:020}", number.as_u64().unwrap_or(0)),
+            Value::String(value) => value.to_string(),
+            _ => String::new(),
+        })
+        .unwrap_or_default()
 }
 
 const DEFAULT_READ_FIELDS: &[&str] = &[

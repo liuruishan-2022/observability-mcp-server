@@ -13,7 +13,7 @@ pub mod loki;
 pub mod nacos;
 pub mod prometheus;
 pub mod weixin;
-use atlassian::{ConfluenceClient, JiraClient};
+use atlassian::{BitbucketClient, ConfluenceClient, JiraClient};
 use doris::DorisClient;
 use harbor::HarborClient;
 use kafka::KafkaClient;
@@ -164,6 +164,10 @@ pub(crate) fn new_shared_http_client(ssl_verify: bool) -> Client {
 /// - `CONFLUENCE_USERNAME` / `CONFLUENCE_API_TOKEN`: Confluence Basic 认证 (可选)
 /// - `CONFLUENCE_PERSONAL_TOKEN`: Confluence PAT 认证 (可选)
 /// - `CONFLUENCE_SPACES_FILTER`: Confluence 空间过滤器 (可选)
+/// - `BITBUCKET_URL`: Bitbucket Server/Data Center 基础 URL (可选)
+/// - `BITBUCKET_USERNAME` / `BITBUCKET_PASSWORD`: Bitbucket Basic 认证 (可选)
+/// - `BITBUCKET_PERSONAL_TOKEN`: Bitbucket PAT 认证 (可选)
+/// - `BITBUCKET_PROJECT`: 默认 Bitbucket project key (可选)
 ///
 /// # 示例
 /// ```
@@ -285,6 +289,32 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         None
     };
 
+    // Bitbucket Server/Data Center 配置是可选的
+    let bitbucket = if let Ok(url) = var("BITBUCKET_URL") {
+        let username = var("BITBUCKET_USERNAME").ok();
+        let password = var("BITBUCKET_PASSWORD").ok();
+        let personal_token = var("BITBUCKET_PERSONAL_TOKEN")
+            .ok()
+            .or_else(|| var("BITBUCKET_TOKEN").ok());
+        let ssl_verify = global_http_ssl_verify();
+        let default_project = var("BITBUCKET_PROJECT").ok();
+
+        if personal_token.is_some() || (username.is_some() && password.is_some()) {
+            Some(BitbucketClient::new(
+                url,
+                username,
+                password,
+                personal_token,
+                ssl_verify,
+                default_project,
+            )?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     Ok(Searcher {
         prometheus: PrometheusClient::new(prometheus_root),
         loki: LokiClient::new(loki_root),
@@ -295,6 +325,7 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         weixin,
         jira,
         confluence,
+        bitbucket,
         kubernetes: None, // Kubernetes client requires async initialization
     })
 }
@@ -416,6 +447,32 @@ pub async fn build_searcher_async() -> Result<Searcher, SearcherError> {
         None
     };
 
+    // Bitbucket Server/Data Center 配置是可选的
+    let bitbucket = if let Ok(url) = var("BITBUCKET_URL") {
+        let username = var("BITBUCKET_USERNAME").ok();
+        let password = var("BITBUCKET_PASSWORD").ok();
+        let personal_token = var("BITBUCKET_PERSONAL_TOKEN")
+            .ok()
+            .or_else(|| var("BITBUCKET_TOKEN").ok());
+        let ssl_verify = global_http_ssl_verify();
+        let default_project = var("BITBUCKET_PROJECT").ok();
+
+        if personal_token.is_some() || (username.is_some() && password.is_some()) {
+            Some(BitbucketClient::new(
+                url,
+                username,
+                password,
+                personal_token,
+                ssl_verify,
+                default_project,
+            )?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     // Kubernetes 客户端需要异步初始化
     let kubernetes = KubernetesClient::new(None).await.ok();
 
@@ -429,11 +486,12 @@ pub async fn build_searcher_async() -> Result<Searcher, SearcherError> {
         weixin,
         jira,
         confluence,
+        bitbucket,
         kubernetes,
     })
 }
 
-/// Searcher 结构体，包含 Prometheus、Loki、Harbor、Nacos、Kafka、Doris、企业微信、Jira、Confluence 和 Kubernetes 客户端
+/// Searcher 结构体，包含 Prometheus、Loki、Harbor、Nacos、Kafka、Doris、企业微信、Jira、Confluence、Bitbucket 和 Kubernetes 客户端
 pub struct Searcher {
     pub prometheus: PrometheusClient,
     pub loki: LokiClient,
@@ -444,6 +502,7 @@ pub struct Searcher {
     pub weixin: Option<WeixinClient>,
     pub jira: Option<JiraClient>,
     pub confluence: Option<ConfluenceClient>,
+    pub bitbucket: Option<BitbucketClient>,
     pub kubernetes: Option<KubernetesClient>,
 }
 
@@ -459,6 +518,7 @@ impl Searcher {
         weixin: Option<WeixinClient>,
         jira: Option<JiraClient>,
         confluence: Option<ConfluenceClient>,
+        bitbucket: Option<BitbucketClient>,
         kubernetes: Option<KubernetesClient>,
     ) -> Self {
         Searcher {
@@ -471,6 +531,7 @@ impl Searcher {
             weixin,
             jira,
             confluence,
+            bitbucket,
             kubernetes,
         }
     }
@@ -509,6 +570,10 @@ impl Searcher {
 
     pub fn confluence(&self) -> Option<&ConfluenceClient> {
         self.confluence.as_ref()
+    }
+
+    pub fn bitbucket(&self) -> Option<&BitbucketClient> {
+        self.bitbucket.as_ref()
     }
 
     pub fn kubernetes(&self) -> Option<&KubernetesClient> {

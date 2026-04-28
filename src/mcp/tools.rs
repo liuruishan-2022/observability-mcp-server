@@ -1233,6 +1233,502 @@ pub struct JiraGetIssuesDevelopmentInfoRequest {
     pub data_type: Option<String>,
 }
 
+// ========== Bitbucket Server/Data Center 相关数据结构 ==========
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketApiReadRequest {
+    #[schemars(description = "Bitbucket Server REST 路径；默认补 /rest/api/1.0 前缀")]
+    pub path: String,
+    #[schemars(description = "查询参数对象")]
+    pub query_params: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketApiWriteRequest {
+    #[schemars(description = "Bitbucket Server REST 路径；默认补 /rest/api/1.0 前缀")]
+    pub path: String,
+    #[schemars(description = "请求体 JSON 对象")]
+    pub body: serde_json::Value,
+    #[schemars(description = "查询参数对象")]
+    pub query_params: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketListProjectsRequest {
+    #[schemars(description = "分页起始位置")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "按项目名称/key 模糊过滤")]
+    pub name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketListRepositoriesRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT，仍无默认值时列出可访问仓库")]
+    pub project_key: Option<String>,
+    #[schemars(description = "分页起始位置")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "按仓库名称/slug 模糊过滤")]
+    pub name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketRepositoryRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketListBranchesRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "分支过滤文本")]
+    pub filter_text: Option<String>,
+    #[schemars(description = "排序字段，例如 MODIFICATION")]
+    pub order_by: Option<String>,
+    #[schemars(description = "是否返回分支详情")]
+    pub details: Option<bool>,
+    #[schemars(description = "分页起始位置")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketGetBranchRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "分支名，可传 main 或 refs/heads/main")]
+    pub branch: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketListCommitsRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "结束 ref/commit")]
+    pub until: Option<String>,
+    #[schemars(description = "起始 ref/commit")]
+    pub since: Option<String>,
+    #[schemars(description = "文件路径过滤")]
+    pub path: Option<String>,
+    #[schemars(description = "分页起始位置")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketGetCommitRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "commit id")]
+    pub commit_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketGetFileRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "仓库内文件路径")]
+    pub file_path: String,
+    #[schemars(description = "branch/tag/commit；不传使用默认分支")]
+    pub at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketListPullRequestsRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR 状态，如 OPEN、MERGED、DECLINED、ALL")]
+    pub state: Option<String>,
+    #[schemars(description = "方向，如 INCOMING 或 OUTGOING")]
+    pub direction: Option<String>,
+    #[schemars(description = "按 ref 过滤")]
+    pub at: Option<String>,
+    #[schemars(description = "排序字段")]
+    pub order: Option<String>,
+    #[schemars(description = "分页起始位置")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketCreatePullRequestRequest {
+    #[schemars(description = "目标项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "目标仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR 标题")]
+    pub title: String,
+    #[schemars(description = "PR 描述")]
+    pub description: Option<String>,
+    #[schemars(description = "源分支")]
+    pub source_branch: String,
+    #[schemars(description = "目标分支")]
+    pub target_branch: String,
+    #[schemars(description = "源项目 key；跨仓库 PR 可传")]
+    pub source_project_key: Option<String>,
+    #[schemars(description = "源仓库 slug；跨仓库 PR 可传")]
+    pub source_repo_slug: Option<String>,
+    #[schemars(description = "reviewer 用户名列表")]
+    pub reviewers: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketPullRequestRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketUpdatePullRequestRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "新标题")]
+    pub title: Option<String>,
+    #[schemars(description = "新描述")]
+    pub description: Option<String>,
+    #[schemars(description = "新目标分支")]
+    pub target_branch: Option<String>,
+    #[schemars(description = "reviewer 用户名列表")]
+    pub reviewers: Option<Vec<String>>,
+    #[schemars(description = "PR version；不传会自动读取当前 version")]
+    pub version: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketVersionedPullRequestRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "PR version；不传会自动读取当前 version")]
+    pub version: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketMergePullRequestRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "PR version；不传会自动读取当前 version")]
+    pub version: Option<i64>,
+    #[schemars(description = "merge commit 消息")]
+    pub message: Option<String>,
+    #[schemars(description = "Bitbucket Server merge strategyId")]
+    pub strategy_id: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketSetPullRequestStatusRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "用户 slug/name；不传则使用 BITBUCKET_USERNAME")]
+    pub user_slug: Option<String>,
+    #[schemars(description = "PR version；不传会自动读取当前 version")]
+    pub version: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketPullRequestPageRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "分页起始位置")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketPullRequestCommentRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "评论 ID")]
+    pub comment_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketAddPullRequestCommentRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "评论内容")]
+    pub text: String,
+    #[schemars(description = "Server anchor 对象，用于行内评论")]
+    pub anchor: Option<serde_json::Value>,
+    #[schemars(description = "父评论 ID，用于回复")]
+    pub parent_id: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketUpdatePullRequestCommentRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "评论 ID")]
+    pub comment_id: String,
+    #[schemars(description = "新评论内容")]
+    pub text: String,
+    #[schemars(description = "评论 version")]
+    pub version: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketDeletePullRequestCommentRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "评论 ID")]
+    pub comment_id: String,
+    #[schemars(description = "评论 version")]
+    pub version: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketSetPullRequestCommentStateRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "评论 ID")]
+    pub comment_id: String,
+    #[schemars(description = "评论 version；不传会先读取当前 comment")]
+    pub version: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketGetPullRequestDiffRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "可选文件路径")]
+    pub path: Option<String>,
+    #[schemars(description = "上下文行数")]
+    pub context_lines: Option<usize>,
+    #[schemars(description = "空白处理模式")]
+    pub whitespace: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketGetPullRequestChangesRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "基准变更 ID")]
+    pub since_id: Option<String>,
+    #[schemars(description = "是否包含 comments")]
+    pub with_comments: Option<bool>,
+    #[schemars(description = "分页起始位置")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketPullRequestTaskRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "任务 ID")]
+    pub task_id: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketCreatePullRequestTaskRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "任务内容")]
+    pub text: String,
+    #[schemars(description = "Server anchor 对象，用于行内任务")]
+    pub anchor: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketUpdatePullRequestTaskRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "任务 ID")]
+    pub task_id: String,
+    #[schemars(description = "任务内容")]
+    pub text: Option<String>,
+    #[schemars(description = "任务状态")]
+    pub state: Option<String>,
+    #[schemars(description = "任务 version")]
+    pub version: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketDeletePullRequestTaskRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "任务 ID")]
+    pub task_id: String,
+    #[schemars(description = "任务 version")]
+    pub version: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketGetPullRequestStatusesRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "PR ID")]
+    pub pull_request_id: String,
+    #[schemars(description = "commit id；不传则使用 PR source latestCommit")]
+    pub commit_id: Option<String>,
+    #[schemars(description = "分页起始位置")]
+    pub start: Option<usize>,
+    #[schemars(description = "最大返回数量")]
+    pub limit: Option<usize>,
+    #[schemars(description = "排序字段")]
+    pub order_by: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketGetPendingReviewPullRequestsRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "当前 reviewer 用户 slug/name；不传则使用 BITBUCKET_USERNAME")]
+    pub user_slug: Option<String>,
+    #[schemars(description = "限定扫描的仓库 slug 列表；不传则扫描项目内仓库")]
+    pub repository_list: Option<Vec<String>>,
+    #[schemars(description = "最大返回 PR 数量")]
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketRepositoryBranchingModelRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketUpdateRepositoryBranchingModelRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "Bitbucket Server branchmodel configuration JSON")]
+    pub body: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketProjectBranchingModelRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketUpdateProjectBranchingModelRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "Bitbucket Server branchmodel configuration JSON")]
+    pub body: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketGetDefaultReviewersRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug；不传查询项目级默认 reviewer")]
+    pub repo_slug: Option<String>,
+    #[schemars(description = "源 ref id，例如 refs/heads/feature/x")]
+    pub source_ref_id: Option<String>,
+    #[schemars(description = "目标 ref id，例如 refs/heads/main")]
+    pub target_ref_id: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BitbucketCloneRepositoryRequest {
+    #[schemars(description = "项目 key；不传则使用 BITBUCKET_PROJECT")]
+    pub project_key: Option<String>,
+    #[schemars(description = "仓库 slug")]
+    pub repo_slug: String,
+    #[schemars(description = "本地目标目录；会 clone 到 target_path/repo_slug")]
+    pub target_path: String,
+    #[schemars(description = "clone 协议，ssh 或 http/https")]
+    pub protocol: Option<String>,
+}
+
 // ========== Confluence 相关数据结构 ==========
 
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -1569,6 +2065,17 @@ impl Tools {
 
     fn confluence_not_configured() -> String {
         "Error: Confluence client not configured. Please set CONFLUENCE_URL and either CONFLUENCE_PERSONAL_TOKEN or CONFLUENCE_USERNAME/CONFLUENCE_API_TOKEN.".to_string()
+    }
+
+    fn bitbucket_not_configured() -> String {
+        "Error: Bitbucket Server client not configured. Please set BITBUCKET_URL and either BITBUCKET_PERSONAL_TOKEN or BITBUCKET_USERNAME/BITBUCKET_PASSWORD.".to_string()
+    }
+
+    fn object_param(
+        value: Option<serde_json::Value>,
+        field_name: &str,
+    ) -> Result<serde_json::Map<String, serde_json::Value>, crate::searcher::SearcherError> {
+        crate::searcher::atlassian::ensure_object(value, field_name)
     }
 
     #[tool(description = "获取当前服务的版本号")]
@@ -4301,6 +4808,1113 @@ impl Tools {
         }
     }
 
+    // ========== Bitbucket Server/Data Center Tools ==========
+
+    #[tool(description = "Bitbucket Server 通用 GET 请求；默认使用 /rest/api/1.0")]
+    pub async fn bitbucket_get(
+        &self,
+        Parameters(params): Parameters<BitbucketApiReadRequest>,
+    ) -> String {
+        info!("Bitbucket GET: {}", params.path);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => match Self::object_param(params.query_params, "query_params") {
+                Ok(query_params) => {
+                    Self::serialize_result(bitbucket.get(&params.path, Some(query_params)).await)
+                }
+                Err(error) => format!("Error: {}", error),
+            },
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Bitbucket Server 通用 POST 请求；默认使用 /rest/api/1.0")]
+    pub async fn bitbucket_post(
+        &self,
+        Parameters(params): Parameters<BitbucketApiWriteRequest>,
+    ) -> String {
+        info!("Bitbucket POST: {}", params.path);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => match Self::object_param(params.query_params, "query_params") {
+                Ok(query_params) => Self::serialize_result(
+                    bitbucket
+                        .post(&params.path, Some(query_params), params.body)
+                        .await,
+                ),
+                Err(error) => format!("Error: {}", error),
+            },
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Bitbucket Server 通用 PUT 请求；默认使用 /rest/api/1.0")]
+    pub async fn bitbucket_put(
+        &self,
+        Parameters(params): Parameters<BitbucketApiWriteRequest>,
+    ) -> String {
+        info!("Bitbucket PUT: {}", params.path);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => match Self::object_param(params.query_params, "query_params") {
+                Ok(query_params) => Self::serialize_result(
+                    bitbucket
+                        .put(&params.path, Some(query_params), params.body)
+                        .await,
+                ),
+                Err(error) => format!("Error: {}", error),
+            },
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Bitbucket Server 通用 PATCH 请求；默认使用 /rest/api/1.0")]
+    pub async fn bitbucket_patch(
+        &self,
+        Parameters(params): Parameters<BitbucketApiWriteRequest>,
+    ) -> String {
+        info!("Bitbucket PATCH: {}", params.path);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => match Self::object_param(params.query_params, "query_params") {
+                Ok(query_params) => Self::serialize_result(
+                    bitbucket
+                        .patch(&params.path, Some(query_params), params.body)
+                        .await,
+                ),
+                Err(error) => format!("Error: {}", error),
+            },
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Bitbucket Server 通用 DELETE 请求；默认使用 /rest/api/1.0")]
+    pub async fn bitbucket_delete(
+        &self,
+        Parameters(params): Parameters<BitbucketApiReadRequest>,
+    ) -> String {
+        info!("Bitbucket DELETE: {}", params.path);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => match Self::object_param(params.query_params, "query_params") {
+                Ok(query_params) => {
+                    Self::serialize_result(bitbucket.delete(&params.path, Some(query_params)).await)
+                }
+                Err(error) => format!("Error: {}", error),
+            },
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Bitbucket Server 项目")]
+    pub async fn bitbucket_list_projects(
+        &self,
+        Parameters(params): Parameters<BitbucketListProjectsRequest>,
+    ) -> String {
+        info!("Bitbucket list projects");
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .list_projects(params.start, params.limit, params.name.as_deref())
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Bitbucket Server 仓库")]
+    pub async fn bitbucket_list_repositories(
+        &self,
+        Parameters(params): Parameters<BitbucketListRepositoriesRequest>,
+    ) -> String {
+        info!("Bitbucket list repositories: {:?}", params.project_key);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .list_repositories(
+                        params.project_key.as_deref(),
+                        params.start,
+                        params.limit,
+                        params.name.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server 仓库详情")]
+    pub async fn bitbucket_get_repository(
+        &self,
+        Parameters(params): Parameters<BitbucketRepositoryRequest>,
+    ) -> String {
+        info!("Bitbucket get repository: {}", params.repo_slug);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_repository(params.project_key.as_deref(), &params.repo_slug)
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Bitbucket Server 仓库分支")]
+    pub async fn bitbucket_list_branches(
+        &self,
+        Parameters(params): Parameters<BitbucketListBranchesRequest>,
+    ) -> String {
+        info!("Bitbucket list branches: {}", params.repo_slug);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .list_branches(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        params.filter_text.as_deref(),
+                        params.order_by.as_deref(),
+                        params.details,
+                        params.start,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server 分支详情")]
+    pub async fn bitbucket_get_branch(
+        &self,
+        Parameters(params): Parameters<BitbucketGetBranchRequest>,
+    ) -> String {
+        info!(
+            "Bitbucket get branch: {} / {}",
+            params.repo_slug, params.branch
+        );
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_branch(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.branch,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Bitbucket Server 仓库 commits")]
+    pub async fn bitbucket_list_commits(
+        &self,
+        Parameters(params): Parameters<BitbucketListCommitsRequest>,
+    ) -> String {
+        info!("Bitbucket list commits: {}", params.repo_slug);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .list_commits(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        params.until.as_deref(),
+                        params.since.as_deref(),
+                        params.path.as_deref(),
+                        params.start,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server commit 详情")]
+    pub async fn bitbucket_get_commit(
+        &self,
+        Parameters(params): Parameters<BitbucketGetCommitRequest>,
+    ) -> String {
+        info!("Bitbucket get commit: {}", params.commit_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_commit(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.commit_id,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "读取 Bitbucket Server 仓库文件内容")]
+    pub async fn bitbucket_get_file_content(
+        &self,
+        Parameters(params): Parameters<BitbucketGetFileRequest>,
+    ) -> String {
+        info!(
+            "Bitbucket get file: {} / {}",
+            params.repo_slug, params.file_path
+        );
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_file_content(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.file_path,
+                        params.at.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Bitbucket Server Pull Requests")]
+    pub async fn bitbucket_list_pull_requests(
+        &self,
+        Parameters(params): Parameters<BitbucketListPullRequestsRequest>,
+    ) -> String {
+        info!("Bitbucket list PRs: {}", params.repo_slug);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .list_pull_requests(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        params.state.as_deref(),
+                        params.direction.as_deref(),
+                        params.at.as_deref(),
+                        params.order.as_deref(),
+                        params.start,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Bitbucket Server Pull Request")]
+    pub async fn bitbucket_create_pull_request(
+        &self,
+        Parameters(params): Parameters<BitbucketCreatePullRequestRequest>,
+    ) -> String {
+        info!("Bitbucket create PR: {}", params.title);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .create_pull_request(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.title,
+                        params.description.as_deref(),
+                        &params.source_branch,
+                        &params.target_branch,
+                        params.source_project_key.as_deref(),
+                        params.source_repo_slug.as_deref(),
+                        params.reviewers,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server Pull Request 详情")]
+    pub async fn bitbucket_get_pull_request(
+        &self,
+        Parameters(params): Parameters<BitbucketPullRequestRequest>,
+    ) -> String {
+        info!("Bitbucket get PR: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Bitbucket Server Pull Request")]
+    pub async fn bitbucket_update_pull_request(
+        &self,
+        Parameters(params): Parameters<BitbucketUpdatePullRequestRequest>,
+    ) -> String {
+        info!("Bitbucket update PR: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .update_pull_request(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.title.as_deref(),
+                        params.description.as_deref(),
+                        params.target_branch.as_deref(),
+                        params.reviewers,
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "合并 Bitbucket Server Pull Request")]
+    pub async fn bitbucket_merge_pull_request(
+        &self,
+        Parameters(params): Parameters<BitbucketMergePullRequestRequest>,
+    ) -> String {
+        info!("Bitbucket merge PR: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .merge_pull_request(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.version,
+                        params.message.as_deref(),
+                        params.strategy_id.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Decline Bitbucket Server Pull Request")]
+    pub async fn bitbucket_decline_pull_request(
+        &self,
+        Parameters(params): Parameters<BitbucketVersionedPullRequestRequest>,
+    ) -> String {
+        info!("Bitbucket decline PR: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .decline_pull_request(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Reopen Bitbucket Server Pull Request")]
+    pub async fn bitbucket_reopen_pull_request(
+        &self,
+        Parameters(params): Parameters<BitbucketVersionedPullRequestRequest>,
+    ) -> String {
+        info!("Bitbucket reopen PR: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .reopen_pull_request(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Approve Bitbucket Server Pull Request")]
+    pub async fn bitbucket_approve_pull_request(
+        &self,
+        Parameters(params): Parameters<BitbucketSetPullRequestStatusRequest>,
+    ) -> String {
+        info!("Bitbucket approve PR: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .set_pull_request_status(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.user_slug.as_deref(),
+                        "APPROVED",
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "取消 Bitbucket Server Pull Request approve")]
+    pub async fn bitbucket_unapprove_pull_request(
+        &self,
+        Parameters(params): Parameters<BitbucketSetPullRequestStatusRequest>,
+    ) -> String {
+        info!("Bitbucket unapprove PR: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .set_pull_request_status(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.user_slug.as_deref(),
+                        "UNAPPROVED",
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "在 Bitbucket Server Pull Request 上请求修改")]
+    pub async fn bitbucket_request_changes(
+        &self,
+        Parameters(params): Parameters<BitbucketSetPullRequestStatusRequest>,
+    ) -> String {
+        info!("Bitbucket request changes: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .set_pull_request_status(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.user_slug.as_deref(),
+                        "NEEDS_WORK",
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server Pull Request activity")]
+    pub async fn bitbucket_get_pull_request_activity(
+        &self,
+        Parameters(params): Parameters<BitbucketPullRequestPageRequest>,
+    ) -> String {
+        info!("Bitbucket PR activity: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_activity(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.start,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Bitbucket Server Pull Request commits")]
+    pub async fn bitbucket_get_pull_request_commits(
+        &self,
+        Parameters(params): Parameters<BitbucketPullRequestPageRequest>,
+    ) -> String {
+        info!("Bitbucket PR commits: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_commits(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.start,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Bitbucket Server Pull Request comments")]
+    pub async fn bitbucket_get_pull_request_comments(
+        &self,
+        Parameters(params): Parameters<BitbucketPullRequestPageRequest>,
+    ) -> String {
+        info!("Bitbucket PR comments: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_comments(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.start,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server Pull Request 单条 comment")]
+    pub async fn bitbucket_get_pull_request_comment(
+        &self,
+        Parameters(params): Parameters<BitbucketPullRequestCommentRequest>,
+    ) -> String {
+        info!("Bitbucket get PR comment: {}", params.comment_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_comment(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.comment_id,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "添加 Bitbucket Server Pull Request comment")]
+    pub async fn bitbucket_add_pull_request_comment(
+        &self,
+        Parameters(params): Parameters<BitbucketAddPullRequestCommentRequest>,
+    ) -> String {
+        info!("Bitbucket add PR comment: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .add_pull_request_comment(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.text,
+                        params.anchor,
+                        params.parent_id,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Bitbucket Server Pull Request comment")]
+    pub async fn bitbucket_update_pull_request_comment(
+        &self,
+        Parameters(params): Parameters<BitbucketUpdatePullRequestCommentRequest>,
+    ) -> String {
+        info!("Bitbucket update PR comment: {}", params.comment_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .update_pull_request_comment(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.comment_id,
+                        &params.text,
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "删除 Bitbucket Server Pull Request comment")]
+    pub async fn bitbucket_delete_pull_request_comment(
+        &self,
+        Parameters(params): Parameters<BitbucketDeletePullRequestCommentRequest>,
+    ) -> String {
+        info!("Bitbucket delete PR comment: {}", params.comment_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .delete_pull_request_comment(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.comment_id,
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Resolve Bitbucket Server Pull Request comment thread")]
+    pub async fn bitbucket_resolve_comment(
+        &self,
+        Parameters(params): Parameters<BitbucketSetPullRequestCommentStateRequest>,
+    ) -> String {
+        info!("Bitbucket resolve PR comment: {}", params.comment_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .set_pull_request_comment_state(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.comment_id,
+                        "RESOLVED",
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "Reopen Bitbucket Server Pull Request comment thread")]
+    pub async fn bitbucket_reopen_comment(
+        &self,
+        Parameters(params): Parameters<BitbucketSetPullRequestCommentStateRequest>,
+    ) -> String {
+        info!("Bitbucket reopen PR comment: {}", params.comment_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .set_pull_request_comment_state(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.comment_id,
+                        "OPEN",
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server Pull Request diff")]
+    pub async fn bitbucket_get_pull_request_diff(
+        &self,
+        Parameters(params): Parameters<BitbucketGetPullRequestDiffRequest>,
+    ) -> String {
+        info!("Bitbucket PR diff: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_diff(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.path.as_deref(),
+                        params.context_lines,
+                        params.whitespace.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(
+        description = "获取 Bitbucket Server Pull Request changed files；对应 Cloud diffstat 的 Server/DC 版本"
+    )]
+    pub async fn bitbucket_get_pull_request_changes(
+        &self,
+        Parameters(params): Parameters<BitbucketGetPullRequestChangesRequest>,
+    ) -> String {
+        info!("Bitbucket PR changes: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_changes(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.since_id.as_deref(),
+                        params.with_comments,
+                        params.start,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server Pull Request patch")]
+    pub async fn bitbucket_get_pull_request_patch(
+        &self,
+        Parameters(params): Parameters<BitbucketPullRequestRequest>,
+    ) -> String {
+        info!("Bitbucket PR patch: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_patch(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Bitbucket Server Pull Request tasks")]
+    pub async fn bitbucket_list_pull_request_tasks(
+        &self,
+        Parameters(params): Parameters<BitbucketPullRequestPageRequest>,
+    ) -> String {
+        info!("Bitbucket PR tasks: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .list_pull_request_tasks(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.start,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server Pull Request 单个 task")]
+    pub async fn bitbucket_get_pull_request_task(
+        &self,
+        Parameters(params): Parameters<BitbucketPullRequestTaskRequest>,
+    ) -> String {
+        info!("Bitbucket get PR task: {}", params.task_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_task(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.task_id,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Bitbucket Server Pull Request task")]
+    pub async fn bitbucket_create_pull_request_task(
+        &self,
+        Parameters(params): Parameters<BitbucketCreatePullRequestTaskRequest>,
+    ) -> String {
+        info!("Bitbucket create PR task: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .create_pull_request_task(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.text,
+                        params.anchor,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Bitbucket Server Pull Request task")]
+    pub async fn bitbucket_update_pull_request_task(
+        &self,
+        Parameters(params): Parameters<BitbucketUpdatePullRequestTaskRequest>,
+    ) -> String {
+        info!("Bitbucket update PR task: {}", params.task_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .update_pull_request_task(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.task_id,
+                        params.text.as_deref(),
+                        params.state.as_deref(),
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "删除 Bitbucket Server Pull Request task")]
+    pub async fn bitbucket_delete_pull_request_task(
+        &self,
+        Parameters(params): Parameters<BitbucketDeletePullRequestTaskRequest>,
+    ) -> String {
+        info!("Bitbucket delete PR task: {}", params.task_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .delete_pull_request_task(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        &params.task_id,
+                        params.version,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server Pull Request source commit 的 build statuses")]
+    pub async fn bitbucket_get_pull_request_statuses(
+        &self,
+        Parameters(params): Parameters<BitbucketGetPullRequestStatusesRequest>,
+    ) -> String {
+        info!("Bitbucket PR statuses: {}", params.pull_request_id);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pull_request_statuses(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.pull_request_id,
+                        params.commit_id.as_deref(),
+                        params.start,
+                        params.limit,
+                        params.order_by.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(
+        description = "列出当前用户在 Bitbucket Server 中待 review 且未 approve 的 Pull Requests"
+    )]
+    pub async fn bitbucket_get_pending_review_pull_requests(
+        &self,
+        Parameters(params): Parameters<BitbucketGetPendingReviewPullRequestsRequest>,
+    ) -> String {
+        info!("Bitbucket pending review PRs: {:?}", params.project_key);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_pending_review_pull_requests(
+                        params.project_key.as_deref(),
+                        params.user_slug.as_deref(),
+                        params.repository_list,
+                        params.limit,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server 仓库 branching model")]
+    pub async fn bitbucket_get_repository_branching_model(
+        &self,
+        Parameters(params): Parameters<BitbucketRepositoryBranchingModelRequest>,
+    ) -> String {
+        info!("Bitbucket repository branching model: {}", params.repo_slug);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_repository_branching_model(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server 仓库 effective branching model")]
+    pub async fn bitbucket_get_effective_repository_branching_model(
+        &self,
+        Parameters(params): Parameters<BitbucketRepositoryBranchingModelRequest>,
+    ) -> String {
+        info!(
+            "Bitbucket effective repository branching model: {}",
+            params.repo_slug
+        );
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_effective_repository_branching_model(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server 仓库 branching model configuration")]
+    pub async fn bitbucket_get_repository_branching_model_settings(
+        &self,
+        Parameters(params): Parameters<BitbucketRepositoryBranchingModelRequest>,
+    ) -> String {
+        info!(
+            "Bitbucket repository branching model settings: {}",
+            params.repo_slug
+        );
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_repository_branching_model_settings(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Bitbucket Server 仓库 branching model configuration")]
+    pub async fn bitbucket_update_repository_branching_model_settings(
+        &self,
+        Parameters(params): Parameters<BitbucketUpdateRepositoryBranchingModelRequest>,
+    ) -> String {
+        info!(
+            "Bitbucket update repository branching model settings: {}",
+            params.repo_slug
+        );
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .update_repository_branching_model_settings(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        params.body,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server 项目 branching model")]
+    pub async fn bitbucket_get_project_branching_model(
+        &self,
+        Parameters(params): Parameters<BitbucketProjectBranchingModelRequest>,
+    ) -> String {
+        info!(
+            "Bitbucket project branching model: {:?}",
+            params.project_key
+        );
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_project_branching_model(params.project_key.as_deref())
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server 项目 branching model configuration")]
+    pub async fn bitbucket_get_project_branching_model_settings(
+        &self,
+        Parameters(params): Parameters<BitbucketProjectBranchingModelRequest>,
+    ) -> String {
+        info!(
+            "Bitbucket project branching model settings: {:?}",
+            params.project_key
+        );
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_project_branching_model_settings(params.project_key.as_deref())
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Bitbucket Server 项目 branching model configuration")]
+    pub async fn bitbucket_update_project_branching_model_settings(
+        &self,
+        Parameters(params): Parameters<BitbucketUpdateProjectBranchingModelRequest>,
+    ) -> String {
+        info!(
+            "Bitbucket update project branching model settings: {:?}",
+            params.project_key
+        );
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .update_project_branching_model_settings(
+                        params.project_key.as_deref(),
+                        params.body,
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Bitbucket Server 默认 reviewer")]
+    pub async fn bitbucket_get_default_reviewers(
+        &self,
+        Parameters(params): Parameters<BitbucketGetDefaultReviewersRequest>,
+    ) -> String {
+        info!("Bitbucket default reviewers: {:?}", params.project_key);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .get_default_reviewers(
+                        params.project_key.as_deref(),
+                        params.repo_slug.as_deref(),
+                        params.source_ref_id.as_deref(),
+                        params.target_ref_id.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
+    #[tool(description = "clone Bitbucket Server 仓库到本地目录")]
+    pub async fn bitbucket_clone_repository(
+        &self,
+        Parameters(params): Parameters<BitbucketCloneRepositoryRequest>,
+    ) -> String {
+        info!("Bitbucket clone repository: {}", params.repo_slug);
+        match self.searcher.bitbucket() {
+            Some(bitbucket) => Self::serialize_result(
+                bitbucket
+                    .clone_repository(
+                        params.project_key.as_deref(),
+                        &params.repo_slug,
+                        &params.target_path,
+                        params.protocol.as_deref(),
+                    )
+                    .await,
+            ),
+            None => Self::bitbucket_not_configured(),
+        }
+    }
+
     // ========== Confluence Tools ==========
 
     #[tool(description = "搜索 Confluence 内容")]
@@ -4959,7 +6573,7 @@ impl ServerHandler for Tools {
                 ..Default::default()
             },
             instructions: Some(
-                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, Doris database operations, Jira and Confluence collaboration tools, WeChat Work (企业微信) webhook notifications, and Kubernetes cluster management!".into(),
+                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, Doris database operations, Jira, Confluence and Bitbucket Server collaboration tools, WeChat Work (企业微信) webhook notifications, and Kubernetes cluster management!".into(),
             ),
             server_info: Implementation {
                 name: "observability-mcp-server".into(),
