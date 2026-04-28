@@ -1,6 +1,7 @@
 use crate::searcher::{SearcherError, global_http_ssl_verify, new_shared_http_client};
 use reqwest::{Client, header};
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 
 /// Harbor API 客户端
@@ -89,12 +90,8 @@ impl HarborClient {
         Ok(())
     }
 
-    /// 发送 POST 请求
-    async fn post<T: for<'de> Deserialize<'de>, B: Serialize>(
-        &self,
-        path: &str,
-        body: &B,
-    ) -> Result<T, SearcherError> {
+    /// 发送 POST 请求。Harbor 的创建类 API 常返回 201 + 空 body。
+    async fn post<B: Serialize>(&self, path: &str, body: &B) -> Result<Value, SearcherError> {
         let url = self.build_url(path);
         let response = self
             .client
@@ -117,8 +114,24 @@ impl HarborClient {
             )));
         }
 
-        let data = response.json().await?;
-        Ok(data)
+        if response.status() == reqwest::StatusCode::NO_CONTENT
+            || response.content_length() == Some(0)
+        {
+            return Ok(json!({ "status": "success" }));
+        }
+
+        let headers = response.headers().clone();
+        let text = response.text().await?;
+        if text.trim().is_empty() {
+            return Ok(json!({
+                "status": "success",
+                "location": headers
+                    .get(header::LOCATION)
+                    .and_then(|value| value.to_str().ok())
+            }));
+        }
+
+        serde_json::from_str(&text).map_err(SearcherError::JsonError)
     }
 
     /// 获取所有项目
@@ -131,14 +144,18 @@ impl HarborClient {
     /// # 参数
     /// - `project_id_or_name`: 项目 ID 或项目名称
     pub async fn get_project(&self, project_id_or_name: &str) -> Result<Project, SearcherError> {
-        self.get(&format!("/projects/{}", project_id_or_name)).await
+        self.get(&format!(
+            "/projects/{}",
+            encode_path_segment(project_id_or_name)
+        ))
+        .await
     }
 
     /// 创建项目
     pub async fn create_project(
         &self,
         request: &CreateProjectRequest,
-    ) -> Result<Project, SearcherError> {
+    ) -> Result<Value, SearcherError> {
         self.post("/projects", request).await
     }
 
@@ -147,8 +164,11 @@ impl HarborClient {
     /// # 参数
     /// - `project_id_or_name`: 项目 ID 或项目名称
     pub async fn delete_project(&self, project_id_or_name: &str) -> Result<(), SearcherError> {
-        self.delete(&format!("/projects/{}", project_id_or_name))
-            .await
+        self.delete(&format!(
+            "/projects/{}",
+            encode_path_segment(project_id_or_name)
+        ))
+        .await
     }
 
     /// 获取项目的仓库列表
@@ -159,8 +179,11 @@ impl HarborClient {
         &self,
         project_id_or_name: &str,
     ) -> Result<Vec<Repository>, SearcherError> {
-        self.get(&format!("/projects/{}/repositories", project_id_or_name))
-            .await
+        self.get(&format!(
+            "/projects/{}/repositories",
+            encode_path_segment(project_id_or_name)
+        ))
+        .await
     }
 
     /// 删除仓库
@@ -175,7 +198,8 @@ impl HarborClient {
     ) -> Result<(), SearcherError> {
         self.delete(&format!(
             "/projects/{}/repositories/{}",
-            project_id_or_name, repository_name
+            encode_path_segment(project_id_or_name),
+            encode_path_segment(repository_name)
         ))
         .await
     }
@@ -192,7 +216,8 @@ impl HarborClient {
     ) -> Result<Vec<Artifact>, SearcherError> {
         self.get(&format!(
             "/projects/{}/repositories/{}/artifacts",
-            project_id_or_name, repository_name
+            encode_path_segment(project_id_or_name),
+            encode_path_segment(repository_name)
         ))
         .await
     }
@@ -211,7 +236,9 @@ impl HarborClient {
     ) -> Result<(), SearcherError> {
         self.delete(&format!(
             "/projects/{}/repositories/{}/artifacts/{}",
-            project_id_or_name, repository_name, digest
+            encode_path_segment(project_id_or_name),
+            encode_path_segment(repository_name),
+            encode_path_segment(digest)
         ))
         .await
     }
@@ -224,8 +251,11 @@ impl HarborClient {
         &self,
         project_id_or_name: &str,
     ) -> Result<Vec<HelmChart>, SearcherError> {
-        self.get(&format!("/projects/{}/helm/charts", project_id_or_name))
-            .await
+        self.get(&format!(
+            "/projects/{}/helm/charts",
+            encode_path_segment(project_id_or_name)
+        ))
+        .await
     }
 
     /// 获取 Helm Chart 的版本列表
@@ -240,7 +270,8 @@ impl HarborClient {
     ) -> Result<Vec<HelmChartVersion>, SearcherError> {
         self.get(&format!(
             "/projects/{}/helm/charts/{}/versions",
-            project_id_or_name, chart_name
+            encode_path_segment(project_id_or_name),
+            encode_path_segment(chart_name)
         ))
         .await
     }
@@ -259,7 +290,9 @@ impl HarborClient {
     ) -> Result<(), SearcherError> {
         self.delete(&format!(
             "/projects/{}/helm/charts/{}/versions/{}",
-            project_id_or_name, chart_name, version
+            encode_path_segment(project_id_or_name),
+            encode_path_segment(chart_name),
+            encode_path_segment(version)
         ))
         .await
     }
@@ -270,6 +303,19 @@ fn basic_auth_encode(username: &str, password: &str) -> String {
     let credentials = format!("{}:{}", username, password);
     use base64::prelude::*;
     BASE64_STANDARD.encode(credentials)
+}
+
+fn encode_path_segment(segment: &str) -> String {
+    let mut encoded = String::new();
+    for byte in segment.as_bytes() {
+        let ch = *byte as char;
+        if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.' | '~') {
+            encoded.push(ch);
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    encoded
 }
 
 // ========== 数据结构定义 ==========
@@ -351,11 +397,14 @@ pub struct Artifact {
     pub repository_id: Option<i64>,
     pub pull_time: Option<String>,
     pub push_time: Option<String>,
+    #[serde(default)]
     pub tags: Vec<ArtifactTag>,
     pub size: Option<i64>,
     pub manifest_media_type: Option<String>,
     pub configuration: Option<ArtifactConfiguration>,
+    #[serde(default)]
     pub references: Vec<ArtifactReference>,
+    #[serde(default)]
     pub annotations: Option<HashMap<String, String>>,
 }
 
@@ -383,6 +432,7 @@ pub struct ArtifactConfiguration {
 pub struct ArtifactReference {
     pub parent_digest: Option<String>,
     pub child_digest: Option<String>,
+    #[serde(default)]
     pub references: Vec<ArtifactReferenceInner>,
 }
 
@@ -390,8 +440,10 @@ pub struct ArtifactReference {
 pub struct ArtifactReferenceInner {
     pub parent_digest: Option<String>,
     pub child_digest: Option<String>,
+    #[serde(rename = "type")]
     pub type_: Option<String>,
     pub source_type: Option<String>,
+    #[serde(default)]
     pub annotations: Option<HashMap<String, String>>,
 }
 
@@ -402,10 +454,13 @@ pub struct HelmChart {
     pub created: String,
     pub updated: Option<String>,
     pub home: Option<String>,
+    #[serde(default)]
     pub sources: Vec<String>,
     pub version: Option<String>,
     pub description: Option<String>,
+    #[serde(default)]
     pub keywords: Vec<String>,
+    #[serde(default)]
     pub maintainers: Vec<ChartMaintainer>,
     pub icon: Option<String>,
     pub deprecated: Option<bool>,
@@ -427,14 +482,19 @@ pub struct HelmChartVersion {
     pub icon: Option<String>,
     pub app_version: Option<String>,
     pub api_version: Option<String>,
+    #[serde(default)]
     pub sources: Vec<String>,
     pub description: Option<String>,
     pub digest: Option<String>,
     pub home: Option<String>,
+    #[serde(default)]
     pub keywords: Vec<String>,
+    #[serde(default)]
     pub maintainers: Vec<ChartMaintainer>,
     pub deprecated: Option<bool>,
+    #[serde(default)]
     pub labels: HashMap<String, String>,
+    #[serde(default)]
     pub urls: Vec<String>,
 }
 
