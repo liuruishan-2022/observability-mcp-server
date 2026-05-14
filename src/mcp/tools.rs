@@ -87,6 +87,8 @@ pub struct LokiQueryRequest {
     end: String,
     #[schemars(description = "返回的最大条目数")]
     limit: Option<u32>,
+    #[schemars(description = "查询步长，可选；metric range 查询建议设置，例如 30s、1m")]
+    step: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -2432,7 +2434,13 @@ impl Tools {
         match self
             .searcher
             .loki
-            .query(&params.query, &params.start, &params.end, params.limit)
+            .query(
+                &params.query,
+                &params.start,
+                &params.end,
+                params.limit,
+                params.step.as_deref(),
+            )
             .await
         {
             Ok(result) => {
