@@ -1489,23 +1489,17 @@ impl Tools {
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for Tools {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            protocol_version: ProtocolVersion::V_2025_06_18,
-            capabilities: ServerCapabilities {
-                tools: Some(ToolsCapability {
-                    list_changed: Some(false),
-                }),
-                ..Default::default()
-            },
-            instructions: Some(
-                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, and Doris database operations!".into(),
-            ),
-            server_info: Implementation {
-                name: "observability-mcp-server".into(),
-                version: "0.4.0".into(),
-                ..Default::default()
-            },
-        }
+        let mut capabilities = ServerCapabilities::default();
+        capabilities.tools = Some(ToolsCapability {
+            list_changed: Some(false),
+        });
+
+        ServerInfo::new(capabilities)
+            .with_protocol_version(ProtocolVersion::V_2025_06_18)
+            .with_instructions(
+                "Observability MCP Server providing Prometheus, Loki metrics search, Harbor container registry management, Nacos service discovery and configuration management, Kafka messaging, and Doris database operations!",
+            )
+            .with_server_info(Implementation::new("observability-mcp-server", "0.4.0"))
     }
 
     async fn ping(&self, _ctx: RequestContext<RoleServer>) -> Result<(), ErrorData> {
