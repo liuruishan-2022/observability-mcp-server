@@ -13,8 +13,6 @@ pub mod docs;
 pub mod mcp;
 pub mod searcher;
 
-const DEFAULT_ALLOWED_HOSTS: [&str; 3] = ["localhost", "127.0.0.1", "::1"];
-
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
@@ -28,13 +26,9 @@ async fn main() -> Result<()> {
 
     let ct = tokio_util::sync::CancellationToken::new();
 
-    let mut server_config = StreamableHttpServerConfig::default();
+    let mut server_config = StreamableHttpServerConfig::default().disable_allowed_hosts();
     server_config.cancellation_token = ct.child_token();
-    server_config.allowed_hosts = allowed_hosts_from_env();
-    info!(
-        allowed_hosts = ?server_config.allowed_hosts,
-        "configured MCP HTTP allowed hosts"
-    );
+    info!("disabled MCP HTTP Host header allowlist");
 
     let service = StreamableHttpService::new(
         || Ok(Tools::new()),
@@ -52,21 +46,6 @@ async fn main() -> Result<()> {
         })
         .await;
     Ok(())
-}
-
-fn allowed_hosts_from_env() -> Vec<String> {
-    std::env::var("MCP_ALLOWED_HOSTS")
-        .ok()
-        .map(|hosts| {
-            hosts
-                .split(',')
-                .map(str::trim)
-                .filter(|host| !host.is_empty())
-                .map(ToOwned::to_owned)
-                .collect::<Vec<_>>()
-        })
-        .filter(|hosts| !hosts.is_empty())
-        .unwrap_or_else(|| DEFAULT_ALLOWED_HOSTS.map(ToOwned::to_owned).to_vec())
 }
 
 struct LocalTimer;

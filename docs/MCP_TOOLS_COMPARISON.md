@@ -17,8 +17,8 @@
 
 ### 本仓库 Rust 实现
 
-- Atlassian tools： [src/mcp/tools.rs](../src/mcp/tools.rs)、[src/searcher/atlassian.rs](../src/searcher/atlassian.rs)
-- Doris tools： [src/mcp/tools.rs](../src/mcp/tools.rs)、[src/searcher/doris.rs](../src/searcher/doris.rs)
+- Atlassian tools： [src/mcp/tools.rs](../observability-mcp-tools/src/mcp/tools.rs)、[src/searcher/atlassian.rs](../observability-mcp-tools/src/searcher/atlassian.rs)
+- Doris tools： [src/mcp/tools.rs](../observability-mcp-tools/src/mcp/tools.rs)、[src/searcher/doris.rs](../observability-mcp-tools/src/searcher/doris.rs)
 
 ### 开源实现基线
 
@@ -38,7 +38,7 @@
 
 以开源 `mcp-atlassian` 的工具参考为基线：
 
-- Rust 实现当前暴露了 73 个 Jira/Confluence MCP tools，定义见 [src/mcp/tools.rs](../src/mcp/tools.rs)
+- Rust 实现当前暴露了 73 个 Jira/Confluence MCP tools，定义见 [src/mcp/tools.rs](../observability-mcp-tools/src/mcp/tools.rs)
 - 开源基线文档中可对应到 72 个 Jira/Confluence 具体工具
 - 从功能覆盖角度看，Rust 实现已经覆盖本次对话中选定的开源基线
 - Rust 还额外提供了一个 Confluence 能力：`confluence_get_space_page_tree`
@@ -58,7 +58,7 @@ Rust 版已覆盖开源基线中的这些功能类别：
 - Jira 指标与开发信息
 - Confluence 页面、评论、标签、用户、分析、附件
 
-对应入口定义见 [src/mcp/tools.rs](../src/mcp/tools.rs)，核心客户端实现见 [src/searcher/atlassian.rs](../src/searcher/atlassian.rs)。
+对应入口定义见 [src/mcp/tools.rs](../observability-mcp-tools/src/mcp/tools.rs)，核心客户端实现见 [src/searcher/atlassian.rs](../observability-mcp-tools/src/searcher/atlassian.rs)。
 
 ### Tool 级结论
 
@@ -80,7 +80,7 @@ Rust 版已覆盖开源基线中的这些功能类别：
 以开源 Python `apache/doris-mcp-server` 为基线：
 
 - Python 基线暴露 25 个 Doris tools，定义见 [`doris_mcp_server/tools/tools_manager.py`](https://github.com/apache/doris-mcp-server/blob/master/doris_mcp_server/tools/tools_manager.py)
-- Rust 实现暴露 31 个 Doris tools，定义见 [src/mcp/tools.rs](../src/mcp/tools.rs)
+- Rust 实现暴露 31 个 Doris tools，定义见 [src/mcp/tools.rs](../observability-mcp-tools/src/mcp/tools.rs)
 
 如果忽略命名差异，Rust 版已经覆盖了 Python 基线在本次对话中涉及的全部 Doris tool 功能。
 
@@ -119,7 +119,7 @@ Rust 版已经覆盖 Python Doris 基线中的这些功能：
 当前最明确的差距是 ADBC 的实现深度，不是 tool 是否存在：
 
 - Python `exec_adbc_query` 走的是真正的 ADBC / Arrow Flight SQL 执行路径，见 [`doris_mcp_server/utils/adbc_query_tools.py`](https://github.com/apache/doris-mcp-server/blob/master/doris_mcp_server/utils/adbc_query_tools.py)
-- Rust `doris_exec_adbc_query` 目前只是兼容接口，实际仍回退到 MySQL 查询执行，见 [src/searcher/doris.rs](../src/searcher/doris.rs)
+- Rust `doris_exec_adbc_query` 目前只是兼容接口，实际仍回退到 MySQL 查询执行，见 [src/searcher/doris.rs](../observability-mcp-tools/src/searcher/doris.rs)
 
 这意味着：
 
@@ -131,7 +131,7 @@ Rust 版已经覆盖 Python Doris 基线中的这些功能：
 `get_memory_stats` 不是 Rust 独有的短板。
 
 - Python 版在 [`doris_mcp_server/utils/analysis_tools.py`](https://github.com/apache/doris-mcp-server/blob/master/doris_mcp_server/utils/analysis_tools.py) 中也明确是 placeholder 风格实现
-- Rust 版在 [src/searcher/doris.rs](../src/searcher/doris.rs) 中也明确说明当前实现与官方 placeholder 行为一致
+- Rust 版在 [src/searcher/doris.rs](../observability-mcp-tools/src/searcher/doris.rs) 中也明确说明当前实现与官方 placeholder 行为一致
 
 因此，这一项目前不构成相对 Python 基线的明显功能缺失。
 
@@ -146,7 +146,7 @@ Rust 版已经覆盖 Python Doris 基线中的这些功能：
 - `doris_get_load_jobs`
 - `doris_get_table_metadata`
 
-对应入口见 [src/mcp/tools.rs](../src/mcp/tools.rs)。
+对应入口见 [src/mcp/tools.rs](../observability-mcp-tools/src/mcp/tools.rs)。
 
 ## 非 Tool 的 MCP 能力
 

@@ -24,7 +24,7 @@ A comprehensive Model Context Protocol (MCP) server for observability, infrastru
 
 ```bash
 # Build
-cargo build --release
+cargo build --release -p observability-mcp-tools
 
 # Run
 ./target/release/observability-mcp-server
@@ -41,7 +41,6 @@ Set environment variables in `.env`:
 PROMETHEUS_ROOT=http://your-prometheus:9090
 LOKI_ROOT=http://your-loki:3100
 HTTP_SSL_VERIFY=false
-MCP_ALLOWED_HOSTS=localhost,127.0.0.1,::1
 
 # Optional - Harbor (for container registry management)
 HARBOR_URL=https://harbor.example.com
@@ -165,20 +164,20 @@ KAFKA_SECURITY_PROTOCOL=plaintext
 
 ```
 observability-mcp-server/
-├── src/
-│   ├── searcher/          # API client implementations
-│   │   ├── prometheus.rs  # Prometheus client
-│   │   ├── loki.rs        # Loki client
-│   │   ├── harbor.rs      # Harbor client
-│   │   ├── nacos.rs       # Nacos client
-│   │   ├── kafka.rs       # Kafka client
-│   ��   └── mod.rs
-│   ├── mcp/
-│   │   └── tools.rs       # MCP tool definitions
-│   ├── docs/              # Documentation integration
-│   └── main.rs
+├── observability-mcp-tools/
+│   ├── src/
+│   │   ├── searcher/      # API client implementations
+│   │   ├── mcp/           # MCP tool definitions
+│   │   ├── docs/          # Documentation integration
+│   │   └── main.rs
+│   ├── examples/
+│   └── Cargo.toml
+├── db-mcp-tools/
+│   ├── src/
+│   │   └── main.rs
+│   └── Cargo.toml
 ├── docs/                  # Prometheus official documentation
-├── Cargo.toml
+├── Cargo.toml             # Workspace configuration
 └── README.md
 ```
 

@@ -33,7 +33,7 @@ echo "=================================="
 # Step 1: Build the Rust binary
 echo ""
 echo "Step 1: Building Rust binary..."
-cargo build --release
+cargo build --release -p observability-mcp-tools
 
 # Step 2: Build Docker image
 echo ""
