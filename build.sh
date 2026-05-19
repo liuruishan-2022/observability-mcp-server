@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-VERSION="v0.1.0"
+VERSION="v1.0.0"
 IMAGE_NAME="observability-mcp-server"
 REGISTRY="xwharbor.wxchina.com/cpaas/component/"
 DOCKERFILE="./Dockerfile"

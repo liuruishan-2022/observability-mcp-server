@@ -1,6 +1,6 @@
 [package]
 name = "observability-mcp-tools"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 
 [[bin]]
@@ -24,6 +24,7 @@ schemars.workspace = true
 tokio-util.workspace = true
 dotenv.workspace = true
 base64.workspace = true
+percent-encoding.workspace = true
 pulldown-cmark.workspace = true
 kube.workspace = true
 k8s-openapi.workspace = true

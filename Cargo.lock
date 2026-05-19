@@ -431,6 +431,8 @@ dependencies = [
  "axum",
  "chrono",
  "rmcp",
+ "schemars",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-util",
@@ -1682,7 +1684,7 @@ dependencies = [
 
 [[package]]
 name = "observability-mcp-tools"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -1692,6 +1694,7 @@ dependencies = [
  "dotenv",
  "k8s-openapi",
  "kube",
+ "percent-encoding",
  "pulldown-cmark",
  "rdkafka",
  "reqwest",

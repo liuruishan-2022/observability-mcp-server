@@ -6,6 +6,7 @@ use thiserror::Error;
 
 pub mod atlassian;
 pub mod doris;
+pub mod grafana;
 pub mod harbor;
 pub mod kafka;
 pub mod kubernetes;
@@ -15,6 +16,7 @@ pub mod prometheus;
 pub mod weixin;
 use atlassian::{BitbucketClient, ConfluenceClient, JiraClient};
 use doris::DorisClient;
+use grafana::GrafanaClient;
 use harbor::HarborClient;
 use kafka::KafkaClient;
 use kubernetes::KubernetesClient;
@@ -168,6 +170,9 @@ pub(crate) fn new_shared_http_client(ssl_verify: bool) -> Client {
 /// - `BITBUCKET_USERNAME` / `BITBUCKET_PASSWORD`: Bitbucket Basic 认证 (可选)
 /// - `BITBUCKET_PERSONAL_TOKEN`: Bitbucket PAT 认证 (可选)
 /// - `BITBUCKET_PROJECT`: 默认 Bitbucket project key (可选)
+/// - `GRAFANA_URL`: Grafana 基础 URL (可选)
+/// - `GRAFANA_SERVICE_ACCOUNT_TOKEN`: Grafana service account token (可选)
+/// - `GRAFANA_USERNAME` / `GRAFANA_PASSWORD`: Grafana Basic 认证 (可选)
 ///
 /// # 示例
 /// ```
@@ -315,6 +320,21 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         None
     };
 
+    let grafana = if let Ok(url) = var("GRAFANA_URL") {
+        let token = var("GRAFANA_SERVICE_ACCOUNT_TOKEN")
+            .ok()
+            .or_else(|| var("GRAFANA_TOKEN").ok());
+        let username = var("GRAFANA_USERNAME").ok();
+        let password = var("GRAFANA_PASSWORD").ok();
+        if token.is_some() || (username.is_some() && password.is_some()) {
+            Some(GrafanaClient::new(url, token, username, password)?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     Ok(Searcher {
         prometheus: PrometheusClient::new(prometheus_root),
         loki: LokiClient::new(loki_root),
@@ -326,6 +346,7 @@ pub fn build_searcher() -> Result<Searcher, SearcherError> {
         jira,
         confluence,
         bitbucket,
+        grafana,
         kubernetes: None, // Kubernetes client requires async initialization
     })
 }
@@ -473,6 +494,21 @@ pub async fn build_searcher_async() -> Result<Searcher, SearcherError> {
         None
     };
 
+    let grafana = if let Ok(url) = var("GRAFANA_URL") {
+        let token = var("GRAFANA_SERVICE_ACCOUNT_TOKEN")
+            .ok()
+            .or_else(|| var("GRAFANA_TOKEN").ok());
+        let username = var("GRAFANA_USERNAME").ok();
+        let password = var("GRAFANA_PASSWORD").ok();
+        if token.is_some() || (username.is_some() && password.is_some()) {
+            Some(GrafanaClient::new(url, token, username, password)?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     // Kubernetes 客户端需要异步初始化
     let kubernetes = KubernetesClient::new(None).await.ok();
 
@@ -487,6 +523,7 @@ pub async fn build_searcher_async() -> Result<Searcher, SearcherError> {
         jira,
         confluence,
         bitbucket,
+        grafana,
         kubernetes,
     })
 }
@@ -503,6 +540,7 @@ pub struct Searcher {
     pub jira: Option<JiraClient>,
     pub confluence: Option<ConfluenceClient>,
     pub bitbucket: Option<BitbucketClient>,
+    pub grafana: Option<GrafanaClient>,
     pub kubernetes: Option<KubernetesClient>,
 }
 
@@ -519,6 +557,7 @@ impl Searcher {
         jira: Option<JiraClient>,
         confluence: Option<ConfluenceClient>,
         bitbucket: Option<BitbucketClient>,
+        grafana: Option<GrafanaClient>,
         kubernetes: Option<KubernetesClient>,
     ) -> Self {
         Searcher {
@@ -532,6 +571,7 @@ impl Searcher {
             jira,
             confluence,
             bitbucket,
+            grafana,
             kubernetes,
         }
     }
@@ -574,6 +614,10 @@ impl Searcher {
 
     pub fn bitbucket(&self) -> Option<&BitbucketClient> {
         self.bitbucket.as_ref()
+    }
+
+    pub fn grafana(&self) -> Option<&GrafanaClient> {
+        self.grafana.as_ref()
     }
 
     pub fn kubernetes(&self) -> Option<&KubernetesClient> {

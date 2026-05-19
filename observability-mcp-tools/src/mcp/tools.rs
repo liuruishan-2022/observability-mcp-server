@@ -2029,6 +2029,125 @@ pub struct WeixinSendNewsRequest {
     pub articles: Vec<WeixinArticle>,
 }
 
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaSearchRequest {
+    #[schemars(description = "搜索关键词，可选")]
+    pub query: Option<String>,
+    #[schemars(description = "搜索类型，可选：dash-db 或 dash-folder")]
+    pub item_type: Option<String>,
+    #[schemars(description = "标签过滤，可选")]
+    pub tag: Option<String>,
+    #[schemars(description = "folder UID 过滤，可选")]
+    pub folder_uid: Option<String>,
+    #[schemars(description = "返回数量限制，可选")]
+    pub limit: Option<u32>,
+    #[schemars(description = "页码，可选")]
+    pub page: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaListDatasourcesRequest {
+    #[schemars(description = "数据源类型过滤，可选，例如 prometheus、loki")]
+    pub datasource_type: Option<String>,
+    #[schemars(description = "返回数量限制，可选")]
+    pub limit: Option<usize>,
+    #[schemars(description = "页码，可选")]
+    pub page: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaGetDatasourceRequest {
+    #[schemars(description = "数据源 UID；如果提供则优先使用")]
+    pub uid: Option<String>,
+    #[schemars(description = "数据源名称；未提供 UID 时使用")]
+    pub name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaDashboardUidRequest {
+    #[schemars(description = "Dashboard UID")]
+    pub uid: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaDashboardPropertyRequest {
+    #[schemars(description = "Dashboard UID")]
+    pub uid: String,
+    #[schemars(description = "属性路径，支持常用路径如 $.title、$.panels[*].title、$.panels[0]、$.templating.list、$.annotations.list")]
+    pub path: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaUpdateDashboardRequest {
+    #[schemars(description = "Grafana dashboard API 请求体；传完整 dashboard JSON，或带 dashboard/folderUid/message/overwrite 的对象")]
+    pub body: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaCreateFolderRequest {
+    #[schemars(description = "Folder 标题")]
+    pub title: String,
+    #[schemars(description = "Folder UID，可选")]
+    pub uid: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaGetAnnotationsRequest {
+    #[schemars(description = "Dashboard UID，可选")]
+    pub dashboard_uid: Option<String>,
+    #[schemars(description = "Panel ID，可选")]
+    pub panel_id: Option<i64>,
+    #[schemars(description = "开始时间，Unix 毫秒或 Grafana 支持的时间字符串，可选")]
+    pub from: Option<String>,
+    #[schemars(description = "结束时间，Unix 毫秒或 Grafana 支持的时间字符串，可选")]
+    pub to: Option<String>,
+    #[schemars(description = "标签过滤，可选")]
+    pub tags: Option<Vec<String>>,
+    #[schemars(description = "返回数量限制，可选")]
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaAnnotationBodyRequest {
+    #[schemars(description = "Grafana annotation API 请求体")]
+    pub body: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaUpdateAnnotationRequest {
+    #[schemars(description = "Annotation ID")]
+    pub id: i64,
+    #[schemars(description = "Grafana annotation patch 请求体")]
+    pub body: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaGetAnnotationTagsRequest {
+    #[schemars(description = "标签名过滤，可选")]
+    pub tag: Option<String>,
+    #[schemars(description = "返回数量限制，可选")]
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct GrafanaGenerateDeeplinkRequest {
+    #[schemars(description = "链接类型：dashboard、panel 或 explore")]
+    pub link_type: String,
+    #[schemars(description = "Dashboard UID，dashboard/panel 链接必填")]
+    pub dashboard_uid: Option<String>,
+    #[schemars(description = "Panel ID，panel 链接必填")]
+    pub panel_id: Option<i64>,
+    #[schemars(description = "Datasource UID，explore 链接可选")]
+    pub datasource_uid: Option<String>,
+    #[schemars(description = "起始时间，可选，例如 now-1h")]
+    pub from: Option<String>,
+    #[schemars(description = "结束时间，可选，例如 now")]
+    pub to: Option<String>,
+    #[schemars(description = "额外查询参数，可选")]
+    pub params: Option<std::collections::BTreeMap<String, String>>,
+}
+
 pub struct Tools {
     tool_router: ToolRouter<Tools>,
     searcher: Searcher,
@@ -2073,6 +2192,208 @@ impl Tools {
         "Error: Bitbucket Server client not configured. Please set BITBUCKET_URL and either BITBUCKET_PERSONAL_TOKEN or BITBUCKET_USERNAME/BITBUCKET_PASSWORD.".to_string()
     }
 
+
+    fn grafana_not_configured() -> String {
+        "Error: Grafana client not configured. Please set GRAFANA_URL and either GRAFANA_SERVICE_ACCOUNT_TOKEN or GRAFANA_USERNAME/GRAFANA_PASSWORD.".to_string()
+    }
+
+    fn grafana_dashboard_value(value: serde_json::Value) -> serde_json::Value {
+        value
+            .get("dashboard")
+            .cloned()
+            .unwrap_or(value)
+    }
+
+    fn grafana_select_dashboard_property(dashboard: &serde_json::Value, path: &str) -> serde_json::Value {
+        let path = path.trim();
+        if path == "$" || path.is_empty() {
+            return dashboard.clone();
+        }
+
+        let normalized = path.strip_prefix("$.").unwrap_or(path);
+        match normalized {
+            "title" => dashboard.get("title").cloned().unwrap_or(serde_json::Value::Null),
+            "tags" => dashboard.get("tags").cloned().unwrap_or(serde_json::Value::Null),
+            "timezone" => dashboard.get("timezone").cloned().unwrap_or(serde_json::Value::Null),
+            "templating.list" => dashboard.pointer("/templating/list").cloned().unwrap_or(serde_json::Value::Null),
+            "annotations.list" => dashboard.pointer("/annotations/list").cloned().unwrap_or(serde_json::Value::Null),
+            "panels" => dashboard.get("panels").cloned().unwrap_or(serde_json::Value::Null),
+            "panels[*].title" => serde_json::Value::Array(
+                dashboard
+                    .get("panels")
+                    .and_then(serde_json::Value::as_array)
+                    .map(|panels| {
+                        panels
+                            .iter()
+                            .map(|panel| panel.get("title").cloned().unwrap_or(serde_json::Value::Null))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            ),
+            "panels[*].targets[*].expr" => serde_json::Value::Array(
+                dashboard
+                    .get("panels")
+                    .and_then(serde_json::Value::as_array)
+                    .map(|panels| {
+                        panels
+                            .iter()
+                            .flat_map(|panel| {
+                                panel
+                                    .get("targets")
+                                    .and_then(serde_json::Value::as_array)
+                                    .into_iter()
+                                    .flatten()
+                                    .map(|target| target.get("expr").cloned().unwrap_or(serde_json::Value::Null))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            ),
+            _ if normalized.starts_with("panels[") && normalized.ends_with(']') => {
+                let index = normalized
+                    .trim_start_matches("panels[")
+                    .trim_end_matches(']')
+                    .parse::<usize>()
+                    .ok();
+                index
+                    .and_then(|i| dashboard.get("panels").and_then(serde_json::Value::as_array).and_then(|v| v.get(i)))
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null)
+            }
+            _ => serde_json::json!({
+                "error": "unsupported_path",
+                "supported_examples": ["$", "$.title", "$.tags", "$.panels", "$.panels[0]", "$.panels[*].title", "$.panels[*].targets[*].expr", "$.templating.list", "$.annotations.list"]
+            }),
+        }
+    }
+
+    fn grafana_dashboard_summary(dashboard: &serde_json::Value) -> serde_json::Value {
+        let panels = dashboard
+            .get("panels")
+            .and_then(serde_json::Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let panel_summaries: Vec<serde_json::Value> = panels
+            .iter()
+            .map(|panel| {
+                serde_json::json!({
+                    "id": panel.get("id"),
+                    "title": panel.get("title"),
+                    "type": panel.get("type"),
+                    "datasource": panel.get("datasource"),
+                    "targets": panel.get("targets").and_then(serde_json::Value::as_array).map(|targets| targets.len()).unwrap_or(0),
+                })
+            })
+            .collect();
+
+        serde_json::json!({
+            "uid": dashboard.get("uid"),
+            "title": dashboard.get("title"),
+            "description": dashboard.get("description"),
+            "tags": dashboard.get("tags"),
+            "timezone": dashboard.get("timezone"),
+            "schemaVersion": dashboard.get("schemaVersion"),
+            "panelCount": panels.len(),
+            "panels": panel_summaries,
+            "variables": dashboard.pointer("/templating/list"),
+            "annotations": dashboard.pointer("/annotations/list"),
+        })
+    }
+
+    fn grafana_dashboard_panel_queries(dashboard: &serde_json::Value, panel_id: Option<i64>) -> serde_json::Value {
+        let panels = dashboard
+            .get("panels")
+            .and_then(serde_json::Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let mut result = Vec::new();
+        for panel in panels {
+            let id = panel.get("id").and_then(serde_json::Value::as_i64);
+            if panel_id.is_some() && id != panel_id {
+                continue;
+            }
+            let targets = panel
+                .get("targets")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            for target in targets {
+                result.push(serde_json::json!({
+                    "panelId": id,
+                    "title": panel.get("title"),
+                    "type": panel.get("type"),
+                    "datasource": target.get("datasource").or_else(|| panel.get("datasource")),
+                    "refId": target.get("refId"),
+                    "query": target.get("expr").or_else(|| target.get("query")).or_else(|| target.get("rawSql")).or_else(|| target.get("target")),
+                    "target": target,
+                }));
+            }
+        }
+        serde_json::Value::Array(result)
+    }
+
+    fn grafana_deeplink(base_url: &str, params: GrafanaGenerateDeeplinkRequest) -> Result<serde_json::Value, crate::searcher::SearcherError> {
+        fn push_param(query: &mut Vec<(String, String)>, key: &str, value: Option<String>) {
+            if let Some(value) = value.filter(|v| !v.is_empty()) {
+                query.push((key.to_string(), value));
+            }
+        }
+        fn encode_component(value: &str) -> String {
+            const SET: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
+                .remove(b'-')
+                .remove(b'_')
+                .remove(b'.')
+                .remove(b'~');
+            percent_encoding::utf8_percent_encode(value, SET).to_string()
+        }
+        fn append_query(mut url: String, query: Vec<(String, String)>) -> String {
+            if query.is_empty() {
+                return url;
+            }
+            url.push('?');
+            url.push_str(
+                &query
+                    .into_iter()
+                    .map(|(k, v)| format!("{}={}", encode_component(&k), encode_component(&v)))
+                    .collect::<Vec<_>>()
+                    .join("&"),
+            );
+            url
+        }
+
+        let link_type = params.link_type.as_str();
+        let mut query = Vec::new();
+        push_param(&mut query, "from", params.from);
+        push_param(&mut query, "to", params.to);
+        if let Some(extra) = params.params {
+            for (key, value) in extra {
+                query.push((key, value));
+            }
+        }
+
+        let url = match link_type {
+            "dashboard" => {
+                let uid = params.dashboard_uid.ok_or_else(|| crate::searcher::SearcherError::Other("dashboard_uid is required".to_string()))?;
+                append_query(format!("{}/d/{}", base_url, encode_component(&uid)), query)
+            }
+            "panel" => {
+                let uid = params.dashboard_uid.ok_or_else(|| crate::searcher::SearcherError::Other("dashboard_uid is required".to_string()))?;
+                let panel_id = params.panel_id.ok_or_else(|| crate::searcher::SearcherError::Other("panel_id is required".to_string()))?;
+                query.push(("viewPanel".to_string(), panel_id.to_string()));
+                append_query(format!("{}/d/{}", base_url, encode_component(&uid)), query)
+            }
+            "explore" => {
+                if let Some(datasource_uid) = params.datasource_uid {
+                    let left = serde_json::json!({ "datasource": datasource_uid });
+                    query.push(("left".to_string(), left.to_string()));
+                }
+                append_query(format!("{}/explore", base_url), query)
+            }
+            _ => return Err(crate::searcher::SearcherError::Other("link_type must be dashboard, panel, or explore".to_string())),
+        };
+        Ok(serde_json::json!({ "url": url }))
+    }
+
     fn object_param(
         value: Option<serde_json::Value>,
         field_name: &str,
@@ -2084,6 +2405,183 @@ impl Tools {
     pub async fn version(&self) -> String {
         info!("获取当前服务的版本号!");
         "v1.0.0".to_string()
+    }
+
+
+    #[tool(description = "搜索 Grafana dashboards")]
+    pub async fn search_dashboards(&self, Parameters(params): Parameters<GrafanaSearchRequest>) -> String {
+        info!("搜索 Grafana dashboards");
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(
+                grafana.search(
+                    params.query.as_deref(),
+                    Some("dash-db"),
+                    params.tag.as_deref(),
+                    params.folder_uid.as_deref(),
+                    params.limit,
+                    params.page,
+                ).await,
+            ),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "搜索 Grafana folders")]
+    pub async fn search_folders(&self, Parameters(params): Parameters<GrafanaSearchRequest>) -> String {
+        info!("搜索 Grafana folders");
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(
+                grafana.search(
+                    params.query.as_deref(),
+                    Some("dash-folder"),
+                    params.tag.as_deref(),
+                    params.folder_uid.as_deref(),
+                    params.limit,
+                    params.page,
+                ).await,
+            ),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "列出 Grafana datasources")]
+    pub async fn list_datasources(&self, Parameters(params): Parameters<GrafanaListDatasourcesRequest>) -> String {
+        info!("列出 Grafana datasources");
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(
+                grafana.list_datasources(params.datasource_type.as_deref(), params.limit, params.page).await,
+            ),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Grafana datasource 详情")]
+    pub async fn get_datasource(&self, Parameters(params): Parameters<GrafanaGetDatasourceRequest>) -> String {
+        info!("获取 Grafana datasource");
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(
+                grafana.get_datasource(params.uid.as_deref(), params.name.as_deref()).await,
+            ),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "根据 UID 获取 Grafana dashboard 完整 JSON")]
+    pub async fn get_dashboard_by_uid(&self, Parameters(params): Parameters<GrafanaDashboardUidRequest>) -> String {
+        info!("获取 Grafana dashboard: {}", params.uid);
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(grafana.get_dashboard_by_uid(&params.uid).await),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Grafana dashboard 摘要")]
+    pub async fn get_dashboard_summary(&self, Parameters(params): Parameters<GrafanaDashboardUidRequest>) -> String {
+        info!("获取 Grafana dashboard 摘要: {}", params.uid);
+        match self.searcher.grafana() {
+            Some(grafana) => match grafana.get_dashboard_by_uid(&params.uid).await {
+                Ok(value) => Self::serialize_value(Self::grafana_dashboard_summary(&Self::grafana_dashboard_value(value))),
+                Err(error) => format!("Error: {}", error),
+            },
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Grafana dashboard 指定属性")]
+    pub async fn get_dashboard_property(&self, Parameters(params): Parameters<GrafanaDashboardPropertyRequest>) -> String {
+        info!("获取 Grafana dashboard 属性: {} {}", params.uid, params.path);
+        match self.searcher.grafana() {
+            Some(grafana) => match grafana.get_dashboard_by_uid(&params.uid).await {
+                Ok(value) => Self::serialize_value(Self::grafana_select_dashboard_property(&Self::grafana_dashboard_value(value), &params.path)),
+                Err(error) => format!("Error: {}", error),
+            },
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Grafana dashboard panel 查询信息")]
+    pub async fn get_dashboard_panel_queries(&self, Parameters(params): Parameters<GrafanaDashboardUidRequest>) -> String {
+        info!("获取 Grafana dashboard panel queries: {}", params.uid);
+        match self.searcher.grafana() {
+            Some(grafana) => match grafana.get_dashboard_by_uid(&params.uid).await {
+                Ok(value) => Self::serialize_value(Self::grafana_dashboard_panel_queries(&Self::grafana_dashboard_value(value), None)),
+                Err(error) => format!("Error: {}", error),
+            },
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建或更新 Grafana dashboard")]
+    pub async fn update_dashboard(&self, Parameters(params): Parameters<GrafanaUpdateDashboardRequest>) -> String {
+        info!("创建或更新 Grafana dashboard");
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(grafana.update_dashboard(params.body).await),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Grafana folder")]
+    pub async fn create_folder(&self, Parameters(params): Parameters<GrafanaCreateFolderRequest>) -> String {
+        info!("创建 Grafana folder: {}", params.title);
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(grafana.create_folder(&params.title, params.uid.as_deref()).await),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Grafana annotations")]
+    pub async fn get_annotations(&self, Parameters(params): Parameters<GrafanaGetAnnotationsRequest>) -> String {
+        info!("获取 Grafana annotations");
+        let tags = params.tags.unwrap_or_default();
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(
+                grafana.get_annotations(
+                    params.dashboard_uid.as_deref(),
+                    params.panel_id,
+                    params.from.as_deref(),
+                    params.to.as_deref(),
+                    &tags,
+                    params.limit,
+                ).await,
+            ),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "创建 Grafana annotation")]
+    pub async fn create_annotation(&self, Parameters(params): Parameters<GrafanaAnnotationBodyRequest>) -> String {
+        info!("创建 Grafana annotation");
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(grafana.create_annotation(params.body).await),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "更新 Grafana annotation")]
+    pub async fn update_annotation(&self, Parameters(params): Parameters<GrafanaUpdateAnnotationRequest>) -> String {
+        info!("更新 Grafana annotation: {}", params.id);
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(grafana.update_annotation(params.id, params.body).await),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "获取 Grafana annotation tags")]
+    pub async fn get_annotation_tags(&self, Parameters(params): Parameters<GrafanaGetAnnotationTagsRequest>) -> String {
+        info!("获取 Grafana annotation tags");
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(grafana.get_annotation_tags(params.tag.as_deref(), params.limit).await),
+            None => Self::grafana_not_configured(),
+        }
+    }
+
+    #[tool(description = "生成 Grafana dashboard、panel 或 explore deeplink")]
+    pub async fn generate_deeplink(&self, Parameters(params): Parameters<GrafanaGenerateDeeplinkRequest>) -> String {
+        info!("生成 Grafana deeplink");
+        match self.searcher.grafana() {
+            Some(grafana) => Self::serialize_result(Self::grafana_deeplink(grafana.base_url(), params)),
+            None => Self::grafana_not_configured(),
+        }
     }
 
     #[tool(description = "获取Prometheus的构建信息")]
@@ -6566,6 +7064,153 @@ impl Tools {
             },
             None => "Error: WeChat client not configured. Please set WEIXIN_WEBHOOK_URL environment variable.".to_string(),
         }
+    }
+}
+
+
+#[cfg(test)]
+mod grafana_tests {
+    use super::*;
+    use serde_json::json;
+    use std::collections::BTreeMap;
+
+    fn sample_dashboard() -> serde_json::Value {
+        json!({
+            "uid": "dash-uid",
+            "title": "Service Overview",
+            "description": "Core service dashboard",
+            "tags": ["prod", "service"],
+            "timezone": "browser",
+            "schemaVersion": 39,
+            "templating": {
+                "list": [
+                    {"name": "namespace", "type": "query"}
+                ]
+            },
+            "annotations": {
+                "list": [
+                    {"name": "Deployments", "enable": true}
+                ]
+            },
+            "panels": [
+                {
+                    "id": 1,
+                    "title": "CPU",
+                    "type": "timeseries",
+                    "datasource": {"uid": "prom", "type": "prometheus"},
+                    "targets": [
+                        {"refId": "A", "expr": "rate(process_cpu_seconds_total[5m])"}
+                    ]
+                },
+                {
+                    "id": 2,
+                    "title": "Logs",
+                    "type": "logs",
+                    "targets": [
+                        {"refId": "A", "query": "{app=\"api\"}"}
+                    ]
+                }
+            ]
+        })
+    }
+
+    #[test]
+    fn grafana_dashboard_summary_extracts_compact_shape() {
+        let summary = Tools::grafana_dashboard_summary(&sample_dashboard());
+
+        assert_eq!(summary["uid"], "dash-uid");
+        assert_eq!(summary["title"], "Service Overview");
+        assert_eq!(summary["panelCount"], 2);
+        assert_eq!(summary["panels"][0]["title"], "CPU");
+        assert_eq!(summary["panels"][0]["targets"], 1);
+        assert_eq!(summary["variables"][0]["name"], "namespace");
+    }
+
+    #[test]
+    fn grafana_dashboard_property_supports_common_paths() {
+        let dashboard = sample_dashboard();
+
+        assert_eq!(Tools::grafana_select_dashboard_property(&dashboard, "$.title"), "Service Overview");
+        assert_eq!(Tools::grafana_select_dashboard_property(&dashboard, "$.panels[0]")["title"], "CPU");
+        assert_eq!(
+            Tools::grafana_select_dashboard_property(&dashboard, "$.panels[*].title"),
+            json!(["CPU", "Logs"])
+        );
+        assert_eq!(
+            Tools::grafana_select_dashboard_property(&dashboard, "$.panels[*].targets[*].expr"),
+            json!(["rate(process_cpu_seconds_total[5m])", null])
+        );
+        assert_eq!(Tools::grafana_select_dashboard_property(&dashboard, "$.templating.list")[0]["name"], "namespace");
+    }
+
+    #[test]
+    fn grafana_dashboard_panel_queries_extracts_queries() {
+        let queries = Tools::grafana_dashboard_panel_queries(&sample_dashboard(), None);
+
+        assert_eq!(queries.as_array().unwrap().len(), 2);
+        assert_eq!(queries[0]["panelId"], 1);
+        assert_eq!(queries[0]["query"], "rate(process_cpu_seconds_total[5m])");
+        assert_eq!(queries[1]["query"], "{app=\"api\"}");
+    }
+
+    #[test]
+    fn grafana_deeplink_generates_dashboard_and_panel_urls() {
+        let dashboard = Tools::grafana_deeplink(
+            "https://grafana.example.com",
+            GrafanaGenerateDeeplinkRequest {
+                link_type: "dashboard".to_string(),
+                dashboard_uid: Some("abc 123".to_string()),
+                panel_id: None,
+                datasource_uid: None,
+                from: Some("now-1h".to_string()),
+                to: Some("now".to_string()),
+                params: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(dashboard["url"], "https://grafana.example.com/d/abc%20123?from=now-1h&to=now");
+
+        let panel = Tools::grafana_deeplink(
+            "https://grafana.example.com",
+            GrafanaGenerateDeeplinkRequest {
+                link_type: "panel".to_string(),
+                dashboard_uid: Some("abc".to_string()),
+                panel_id: Some(7),
+                datasource_uid: None,
+                from: None,
+                to: None,
+                params: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(panel["url"], "https://grafana.example.com/d/abc?viewPanel=7");
+    }
+
+    #[test]
+    fn grafana_deeplink_generates_explore_url() {
+        let mut params = BTreeMap::new();
+        params.insert("orgId".to_string(), "1".to_string());
+
+        let explore = Tools::grafana_deeplink(
+            "https://grafana.example.com",
+            GrafanaGenerateDeeplinkRequest {
+                link_type: "explore".to_string(),
+                dashboard_uid: None,
+                panel_id: None,
+                datasource_uid: Some("prom".to_string()),
+                from: Some("now-6h".to_string()),
+                to: Some("now".to_string()),
+                params: Some(params),
+            },
+        )
+        .unwrap();
+
+        let url = explore["url"].as_str().unwrap();
+        assert!(url.starts_with("https://grafana.example.com/explore?"));
+        assert!(url.contains("from=now-6h"));
+        assert!(url.contains("to=now"));
+        assert!(url.contains("orgId=1"));
+        assert!(url.contains("left=%7B%22datasource%22%3A%22prom%22%7D"));
     }
 }
 
