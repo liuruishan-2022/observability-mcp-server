@@ -26,3 +26,6 @@ logs/
 # Debug
 dist/
 build/
+
+# Local Kubernetes deployment contains environment-specific secrets
+k8s/deployment.yaml
