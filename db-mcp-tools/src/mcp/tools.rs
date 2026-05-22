@@ -5,9 +5,7 @@ use rmcp::model::{CallToolResult, Content};
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
     handler::server::tool::{ToolCallContext, ToolRoute, ToolRouter},
-    model::{
-        Implementation, ProtocolVersion, ServerCapabilities, ServerInfo, ToolsCapability,
-    },
+    model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo, ToolsCapability},
     service::{NotificationContext, RequestContext},
     tool_handler,
 };
