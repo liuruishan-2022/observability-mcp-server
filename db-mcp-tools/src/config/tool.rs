@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 type McpJsonObject = rmcp::model::JsonObject;
 type McpTool = rmcp::model::Tool;
+type Properties = HashMap<String, FieldProperty>;
 
 #[derive(Serialize, Deserialize)]
 pub struct ToolsConfig {
@@ -28,19 +29,30 @@ pub struct Tool {
 
 impl Tool {
     fn to_mcp_tool(&self) -> McpTool {
+        let input_schema = InputSchema::new(&self.properties);
         McpTool::new(
             self.name.clone(),
             self.description.clone(),
-            self.properties.to_mcp_json_object(),
+            input_schema.to_mcp_json_object(),
         )
     }
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct Properties(pub HashMap<String, FieldProperty>);
+#[derive(Serialize)]
+pub struct InputSchema<'a> {
+    #[serde(rename = "type")]
+    schema_type: String,
+    properties: &'a Properties,
+}
 
-impl Properties {
+impl<'a> InputSchema<'a> {
+    pub fn new(properties: &'a Properties) -> Self {
+        InputSchema {
+            schema_type: "object".to_string(),
+            properties,
+        }
+    }
+
     fn to_mcp_json_object(&self) -> Arc<McpJsonObject> {
         let json = rmcp::model::object(
             serde_json::to_value(self).expect("serialize to serde json value failed"),
