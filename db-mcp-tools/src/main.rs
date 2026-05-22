@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use rmcp::transport::{
@@ -10,8 +11,8 @@ use tracing_subscriber::fmt::format::Writer;
 use tracing_subscriber::fmt::time::FormatTime;
 
 use crate::config::args::Args;
-use crate::config::tool::ToolsConfig;
-use crate::mcp::tools::DynamicTools;
+use crate::db::database::DatabaseExecutor;
+use crate::mcp::tools::{DynamicTools, HotToolsState};
 
 pub mod config;
 pub mod db;
@@ -31,19 +32,25 @@ async fn main() -> Result<()> {
         .init();
     info!("start db mcp tools");
 
-    let config = Arc::new(config::load_config());
-    let result = mcp_servers(config.clone()).await;
+    let args = Args::parse_args();
+    info!("args:{}", args.to_string());
+    let config_path = args.config().to_string();
+    let config = config::load_config(&config_path)?;
+    let database_executor = Arc::new(DatabaseExecutor::new().await);
+    let state = Arc::new(HotToolsState::new(config, database_executor.clone()));
+    tokio::spawn(watch_tools_config(config_path, state.clone()));
+    let result = mcp_servers(state.clone()).await;
     if let Err(error) = result {
         warn!("mcp服务失败: err:{}", error);
     }
     Ok(())
 }
 
-async fn mcp_servers(config: Arc<ToolsConfig>) -> anyhow::Result<()> {
+async fn mcp_servers(state: Arc<HotToolsState>) -> anyhow::Result<()> {
     let ct = tokio_util::sync::CancellationToken::new();
 
     let service = StreamableHttpService::new(
-        move || Ok(DynamicTools::new(config.clone())),
+        move || Ok(DynamicTools::new(state.clone())),
         LocalSessionManager::default().into(),
         StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token()),
     );
@@ -58,6 +65,42 @@ async fn mcp_servers(config: Arc<ToolsConfig>) -> anyhow::Result<()> {
         .await;
 
     Ok(())
+}
+
+async fn watch_tools_config(config_path: String, state: Arc<HotToolsState>) {
+    let mut last_content = tokio::fs::read_to_string(&config_path)
+        .await
+        .unwrap_or_default();
+
+    loop {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        let content = match tokio::fs::read_to_string(&config_path).await {
+            Ok(content) => content,
+            Err(error) => {
+                warn!("read tools config failed: path:{config_path}, err:{error}");
+                continue;
+            }
+        };
+
+        if content == last_content {
+            continue;
+        }
+
+        match serde_yaml::from_str(&content) {
+            Ok(config) => {
+                state.replace_config(config).await;
+                state.notify_tools_changed().await;
+                last_content = content;
+                info!("tools config reloaded: path:{config_path}");
+            }
+            Err(error) => {
+                warn!(
+                    "parse tools config failed, keep previous config: path:{config_path}, err:{error}"
+                );
+            }
+        }
+    }
 }
 
 struct LocalTimer;

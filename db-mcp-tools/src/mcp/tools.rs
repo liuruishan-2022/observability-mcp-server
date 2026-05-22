@@ -1,58 +1,76 @@
 use std::sync::Arc;
 
 use crate::config::tool::ToolsConfig;
-use rmcp::model::{CallToolResult, Content};
+use crate::db::database::DatabaseExecutor;
+use rmcp::model::{
+    CallToolRequestParams, CallToolResult, Content, ListToolsResult, PaginatedRequestParams,
+};
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
-    handler::server::tool::{ToolCallContext, ToolRoute, ToolRouter},
     model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo, ToolsCapability},
-    service::{NotificationContext, RequestContext},
-    tool_handler,
+    service::{MaybeSendFuture, NotificationContext, Peer, RequestContext},
 };
+use tokio::sync::RwLock;
+use tracing::warn;
 
 ///
 /// 使用动态的tools做自定义的配置形式
 ///
 
-#[derive(Clone)]
-pub struct DynamicTools {
-    tool_router: ToolRouter<Self>,
+pub struct HotToolsState {
+    config: RwLock<Arc<ToolsConfig>>,
+    database_executor: Arc<DatabaseExecutor>,
+    peers: RwLock<Vec<Peer<RoleServer>>>,
 }
 
-impl DynamicTools {
-    pub fn new(config: Arc<ToolsConfig>) -> Self {
-        let mut router = ToolRouter::new();
-        config
-            .mcp_tools()
-            .into_iter()
-            .map(|tool| {
-                ToolRoute::new_dyn(tool, move |ctx: ToolCallContext<'_, Self>| {
-                    Box::pin(async move {
-                        let args = ctx.arguments.expect("获取参数失败");
-                        let contents = vec![Content::text(format!(
-                            "收到请求动态的Mcp Tool请求:{}",
-                            serde_json::Value::Object(args)
-                        ))];
-                        Ok(CallToolResult::success(contents))
-                    })
-                })
-            })
-            .for_each(|route| {
-                router.add_route(route);
-            });
-
+impl HotToolsState {
+    pub fn new(config: ToolsConfig, database_executor: Arc<DatabaseExecutor>) -> Self {
         Self {
-            tool_router: router,
+            config: RwLock::new(Arc::new(config)),
+            database_executor,
+            peers: RwLock::new(Vec::new()),
         }
+    }
+
+    pub async fn replace_config(&self, config: ToolsConfig) {
+        *self.config.write().await = Arc::new(config);
+    }
+
+    pub async fn notify_tools_changed(&self) {
+        let peers = self.peers.read().await.clone();
+
+        for peer in peers {
+            if let Err(error) = peer.notify_tool_list_changed().await {
+                warn!("notify tools/list_changed failed: {error}");
+            }
+        }
+    }
+
+    async fn current_config(&self) -> Arc<ToolsConfig> {
+        self.config.read().await.clone()
+    }
+
+    async fn add_peer(&self, peer: Peer<RoleServer>) {
+        self.peers.write().await.push(peer);
     }
 }
 
-#[tool_handler(router = self.tool_router)]
+#[derive(Clone)]
+pub struct DynamicTools {
+    state: Arc<HotToolsState>,
+}
+
+impl DynamicTools {
+    pub fn new(state: Arc<HotToolsState>) -> Self {
+        Self { state }
+    }
+}
+
 impl ServerHandler for DynamicTools {
     fn get_info(&self) -> ServerInfo {
         let mut capabilities = ServerCapabilities::default();
         capabilities.tools = Some(ToolsCapability {
-            list_changed: Some(false),
+            list_changed: Some(true),
         });
 
         ServerInfo::new(capabilities)
@@ -60,9 +78,65 @@ impl ServerHandler for DynamicTools {
             .with_server_info(Implementation::new("db-mcp-tools", "0.1.0"))
     }
 
+    fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> impl std::future::Future<Output = Result<CallToolResult, ErrorData>> + MaybeSendFuture + '_
+    {
+        async move {
+            let config = self.state.current_config().await;
+            let tool = config.find_tool(request.name.as_ref()).ok_or_else(|| {
+                ErrorData::invalid_params(format!("tool not found: {}", request.name), None)
+            })?;
+
+            let args = request.arguments.unwrap_or_default();
+
+            let result = self
+                .state
+                .database_executor
+                .execute(tool.sql(), &args)
+                .await
+                .map_err(|error| ErrorData::internal_error(error.to_string(), None))?;
+            let contents = vec![Content::text(result.to_string())];
+            Ok(CallToolResult::success(contents))
+        }
+    }
+
+    fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> impl std::future::Future<Output = Result<ListToolsResult, ErrorData>> + MaybeSendFuture + '_
+    {
+        async move {
+            let config = self.state.current_config().await;
+            Ok(ListToolsResult {
+                tools: config
+                    .tools()
+                    .iter()
+                    .map(|tool| tool.to_mcp_tool())
+                    .collect(),
+                ..Default::default()
+            })
+        }
+    }
+
+    fn get_tool(&self, name: &str) -> Option<rmcp::model::Tool> {
+        let config = self.state.config.try_read().ok()?;
+        config.find_tool(name).map(|tool| tool.to_mcp_tool())
+    }
+
+    fn on_initialized(
+        &self,
+        ctx: NotificationContext<RoleServer>,
+    ) -> impl std::future::Future<Output = ()> + MaybeSendFuture + '_ {
+        async move {
+            self.state.add_peer(ctx.peer.clone()).await;
+        }
+    }
+
     async fn ping(&self, _ctx: RequestContext<RoleServer>) -> Result<(), ErrorData> {
         Ok(())
     }
-
-    async fn on_initialized(&self, _ctx: NotificationContext<RoleServer>) {}
 }

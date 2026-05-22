@@ -20,3 +20,4 @@ url.workspace = true
 thiserror.workspace = true
 tikv-jemallocator.workspace = true
 clap.workspace = true
+sqlx.workspace = true
