@@ -1,8 +1,13 @@
+use std::sync::Arc;
+
+use crate::config::tool::ToolsConfig;
 use rmcp::model::{CallToolResult, Content};
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
     handler::server::tool::{ToolCallContext, ToolRoute, ToolRouter},
-    model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo, Tool, ToolsCapability},
+    model::{
+        Implementation, ProtocolVersion, ServerCapabilities, ServerInfo, ToolsCapability,
+    },
     service::{NotificationContext, RequestContext},
     tool_handler,
 };
@@ -17,76 +22,26 @@ pub struct DynamicTools {
 }
 
 impl DynamicTools {
-    pub fn new() -> Self {
+    pub fn new(config: Arc<ToolsConfig>) -> Self {
         let mut router = ToolRouter::new();
-        let schema = rmcp::model::object(serde_json::json!({
-            "type": "object",
-            "properties": {},
-            "additionalProperties": false
-        }));
-
-        let tool = Tool::new(
-            "db数据库工具mcp",
-            "可以动态的设置tools,根据配置进行加载",
-            schema,
-        );
-
-        let route = ToolRoute::new_dyn(tool, move |_ctx: ToolCallContext<'_, Self>| {
-            Box::pin(async move {
-                Ok(CallToolResult::success(vec![Content::text(
-                    "这是一个动态的MCP Tool返回的固定的字符串",
-                )]))
+        config
+            .mcp_tools()
+            .into_iter()
+            .map(|tool| {
+                ToolRoute::new_dyn(tool, move |ctx: ToolCallContext<'_, Self>| {
+                    Box::pin(async move {
+                        let args = ctx.arguments.expect("获取参数失败");
+                        let contents = vec![Content::text(format!(
+                            "收到请求动态的Mcp Tool请求:{}",
+                            serde_json::Value::Object(args)
+                        ))];
+                        Ok(CallToolResult::success(contents))
+                    })
+                })
             })
-        });
-
-        router.add_route(route);
-
-        let echo_schema = rmcp::model::object(serde_json::json!({
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "需要回显的名称"
-                },
-                "repeat": {
-                    "type": "integer",
-                    "description": "重复次数，默认 1",
-                    "minimum": 1
-                }
-            },
-            "required": ["name"],
-            "additionalProperties": false
-        }));
-
-        let echo_tool = Tool::new(
-            "echo_name",
-            "接收 name 和 repeat 参数，并返回拼接后的字符串",
-            echo_schema,
-        );
-
-        let echo_route = ToolRoute::new_dyn(echo_tool, move |ctx: ToolCallContext<'_, Self>| {
-            Box::pin(async move {
-                let args = ctx.arguments.unwrap_or_default();
-
-                let name = args.get("name").and_then(|value| value.as_str()).ok_or_else(|| {
-                    ErrorData::invalid_params("missing required parameter: name", None)
-                })?;
-
-                let repeat = args
-                    .get("repeat")
-                    .and_then(|value| value.as_u64())
-                    .unwrap_or(1);
-
-                let text = (0..repeat)
-                    .map(|_| name)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                Ok(CallToolResult::success(vec![Content::text(text)]))
-            })
-        });
-
-        router.add_route(echo_route);
+            .for_each(|route| {
+                router.add_route(route);
+            });
 
         Self {
             tool_router: router,

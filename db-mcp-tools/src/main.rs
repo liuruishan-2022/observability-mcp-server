@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use rmcp::transport::{
     StreamableHttpServerConfig, StreamableHttpService,
@@ -7,10 +9,17 @@ use tracing::{info, warn};
 use tracing_subscriber::fmt::format::Writer;
 use tracing_subscriber::fmt::time::FormatTime;
 
+use crate::config::args::Args;
+use crate::config::tool::ToolsConfig;
 use crate::mcp::tools::DynamicTools;
 
+pub mod config;
 pub mod db;
 pub mod mcp;
+
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -21,18 +30,20 @@ async fn main() -> Result<()> {
         .with_level(true)
         .init();
     info!("start db mcp tools");
-    let result = mcp_servers().await;
+
+    let config = Arc::new(config::load_config());
+    let result = mcp_servers(config.clone()).await;
     if let Err(error) = result {
         warn!("mcp服务失败: err:{}", error);
     }
     Ok(())
 }
 
-async fn mcp_servers() -> anyhow::Result<()> {
+async fn mcp_servers(config: Arc<ToolsConfig>) -> anyhow::Result<()> {
     let ct = tokio_util::sync::CancellationToken::new();
 
     let service = StreamableHttpService::new(
-        || Ok(DynamicTools::new()),
+        move || Ok(DynamicTools::new(config.clone())),
         LocalSessionManager::default().into(),
         StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token()),
     );

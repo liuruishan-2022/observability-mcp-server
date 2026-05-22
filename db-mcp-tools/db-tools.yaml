@@ -1,0 +1,101 @@
+tools:
+  - name: query_user_by_id
+    description: 根据用户 ID 查询用户信息
+    properties:
+      user_id:
+        type: integer
+        description: 用户 ID
+    required:
+      - user_id
+
+  - name: query_user_by_phone
+    description: 根据手机号查询用户信息
+    properties:
+      phone:
+        type: string
+        description: 手机号
+    required:
+      - phone
+
+  - name: query_sms_by_id
+    description: 根据短信 ID 查询短信详情
+    properties:
+      sms_id:
+        type: integer
+        description: 短信 ID
+    required:
+      - sms_id
+
+  - name: query_sms_by_phone
+    description: 根据手机号查询短信记录
+    properties:
+      phone:
+        type: string
+        description: 手机号
+      limit:
+        type: integer
+        description: 返回数量
+    required:
+      - phone
+
+  - name: query_sms_by_status
+    description: 根据发送状态查询短信记录
+    properties:
+      status:
+        type: string
+        description: 短信发送状态
+      limit:
+        type: integer
+        description: 返回数量
+    required:
+      - status
+
+  - name: query_sms_by_time_range
+    description: 根据时间范围查询短信记录
+    properties:
+      start_time:
+        type: string
+        description: 开始时间，格式为 yyyy-MM-dd HH:mm:ss
+      end_time:
+        type: string
+        description: 结束时间，格式为 yyyy-MM-dd HH:mm:ss
+      limit:
+        type: integer
+        description: 返回数量
+    required:
+      - start_time
+      - end_time
+
+  - name: count_sms_by_status
+    description: 按短信状态统计数量
+    properties:
+      status:
+        type: string
+        description: 短信发送状态
+    required:
+      - status
+
+  - name: query_failed_sms
+    description: 查询发送失败的短信记录
+    properties:
+      limit:
+        type: integer
+        description: 返回数量
+    required: []
+
+  - name: query_recent_sms
+    description: 查询最近的短信记录
+    properties:
+      limit:
+        type: integer
+        description: 返回数量
+    required: []
+
+  - name: query_sms_template_by_id
+    description: 根据模板 ID 查询短信模板
+    properties:
+      template_id:
+        type: integer
+        description: 短信模板 ID
+    required:
+      - template_id

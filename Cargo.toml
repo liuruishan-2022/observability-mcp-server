@@ -48,3 +48,6 @@ dirs = "5.0.0"
 rdkafka = { version = "0.38.0", features = ["cmake-build", "ssl", "tokio"] }
 uuid = { version = "1.12.0", features = ["v4"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "mysql", "chrono"] }
+url = "2.5.4"
+tikv-jemallocator = "0.6.1"
+clap = { version = "4.6.1", features = ["derive"] }
